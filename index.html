@@ -3,192 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#e1efff" />
-    <meta
-      name="description"
-      content="Scalpless — an interactive onion dissection workspace. Explore the layers, inspect cells, and look closer."
-    />
-    <title>Scalpless — Onion dissection</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preload" as="image" href="/art/workspace.webp" />
+    <meta name="theme-color" content="#e7f0ff" />
+    <meta name="description" content="Scalpless. A hands-on virtual dissection bench." />
+    <title>Scalpless — Dissection bench</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    <a class="skip-link" href="#tools">Skip to workspace controls</a>
-    <main class="workspace" aria-label="Onion dissection workspace">
-      <h1 class="sr-only">Scalpless — Onion dissection</h1>
-      <div class="ambient" aria-hidden="true"></div>
-      <div class="stage" id="stage">
-        <img
-          class="scene-art"
-          src="/art/workspace.webp"
-          alt="A cutaway red onion on a luminous blue laboratory platform, with forceps and a scalpel beside it."
-          draggable="false"
-        />
-
-        <div
-          class="panels"
-          id="panels"
-          aria-label="Specimen layers and cell views"
-        ></div>
-
-        <svg
-          class="cut-surface"
-          id="cut-surface"
-          viewBox="0 0 510 530"
-          aria-label="Specimen surface. Select the scalpel to mark an incision."
-          tabindex="-1"
-        >
-          <defs>
-            <clipPath id="onion-outline">
-              <path
-                d="M138 8 181 9 211 61C309 67 426 116 477 226 528 344 435 450 359 474L317 509 283 482C123 515 36 443 30 323 24 210 81 141 113 85Z"
-              />
-            </clipPath>
-            <filter id="cut-glow"><feGaussianBlur stdDeviation="2.5" /></filter>
-          </defs>
-          <g id="cut-lines" clip-path="url(#onion-outline)"></g>
-          <path
-            class="specimen-focus"
-            d="M138 8 181 9 211 61C309 67 426 116 477 226 528 344 435 450 359 474L317 509 283 482C123 515 36 443 30 323 24 210 81 141 113 85Z"
-          />
-        </svg>
-
-        <button
-          class="instrument forceps"
-          id="forceps"
-          aria-label="Select forceps to isolate a layer"
-          aria-pressed="false"
-        >
-          <span class="instrument-tip">Forceps · isolate a layer</span>
-        </button>
-        <button
-          class="instrument scalpel"
-          id="scalpel"
-          aria-label="Select scalpel to mark an incision"
-          aria-pressed="false"
-        >
-          <span class="instrument-tip">Scalpel · mark an incision</span>
-        </button>
-
-        <aside
-          class="layer-inspector"
-          id="layer-inspector"
-          aria-labelledby="inspector-title"
-          hidden
-        >
-          <button
-            class="close-inspector"
-            id="close-inspector"
-            aria-label="Close layer details"
-          >
-            <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg>
-          </button>
-          <p class="inspector-eyebrow" id="inspector-eyebrow">LAYER 01</p>
-          <h2 id="inspector-title">Outer Layer</h2>
-          <p id="inspector-description"></p>
-          <button class="inspect-action" id="inspect-layer">
-            Isolate layer
-            <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
-          </button>
-        </aside>
-
-        <nav class="tool-dock" id="tools" aria-label="Workspace controls">
-          <button
-            class="dock-button"
-            id="specimen-view"
-            aria-label="Specimen view"
-            aria-pressed="false"
-            data-tip="Specimen view · V"
-          >
-            <svg viewBox="0 0 32 32">
-              <path
-                d="m16 3 12 7v13l-12 7-12-7V10l12-7Zm0 13v14M4 10l12 6 12-6M10 6.5l12 7"
-              />
-            </svg>
-          </button>
-          <button
-            class="dock-button is-active"
-            id="layers-view"
-            aria-label="Layer view"
-            aria-pressed="true"
-            data-tip="Explore layers · L"
-          >
-            <svg viewBox="0 0 32 32">
-              <path
-                d="m16 2 14 8-14 8L2 10 16 2ZM2 16l14 8 14-8M2 22l14 8 14-8"
-              />
-            </svg>
-          </button>
-          <button
-            class="dock-button"
-            id="magnify"
-            aria-label="Open microscope"
-            data-tip="Microscope · M"
-          >
-            <svg viewBox="0 0 32 32">
-              <circle cx="13" cy="13" r="9" />
-              <path d="m20 20 9 9" />
-            </svg>
-          </button>
-          <button
-            class="dock-button"
-            id="reset"
-            aria-label="Reset workspace"
-            data-tip="Reset workspace · R"
-          >
-            <svg viewBox="0 0 32 32">
-              <path
-                d="M27 12A12 12 0 0 0 5 9M27 4v8h-8M5 20a12 12 0 0 0 22 3M5 28v-8h8"
-              />
-            </svg>
-          </button>
-        </nav>
-        <div
-          class="workspace-status"
-          id="workspace-status"
-          role="status"
-          aria-live="polite"
-        ></div>
+    <a class="skip-link" href="#tools" aria-label="Skip to dissection tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg></a>
+    <main id="bench" class="bench" aria-label="Interactive onion dissection bench">
+      <div id="scene" class="scene" tabindex="0" role="application" aria-label="3D dissection bench. V to inspect, S for scalpel, H for forceps. Right drag or arrow keys to orbit. Plus and minus to zoom."></div>
+      <div class="context-controls" id="context-controls" hidden>
+        <button id="piece-menu" class="icon-button" type="button" aria-label="Choose tissue" aria-expanded="false" aria-controls="piece-picker"></button>
+        <select id="piece-select" class="sr-only" aria-label="Selected tissue"></select>
+        <button id="primary-action" class="icon-button" type="button" aria-label="Lift section"></button>
+        <button id="place-action" class="icon-button" type="button" aria-label="Place on bench" hidden></button>
+        <div id="piece-picker" class="piece-picker" role="group" aria-label="Available tissue" hidden></div>
       </div>
+      <div class="manipulation-pad" id="manipulation-pad" aria-label="Move held tissue" hidden></div>
+      <footer class="controls-area">
+        <div id="cut-progress" class="cut-progress" role="progressbar" aria-label="Incision coverage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+          <i id="cut-progress-fill"></i>
+          <output id="cut-percentage" class="sr-only"></output>
+        </div>
+        <nav class="tool-strip" id="tools" aria-label="Dissection tools"></nav>
+      </footer>
+      <p id="tool-hint" class="sr-only"></p>
+      <div id="status" class="sr-only" role="status" aria-live="polite"></div>
+      <div class="loading" id="loading" role="status" aria-label="Preparing the bench"><span class="loading-orbit" aria-hidden="true"></span></div>
     </main>
-
-    <dialog
-      class="inspection-dialog"
-      id="inspection-dialog"
-      aria-labelledby="inspection-title"
-    >
-      <header class="inspection-header">
-        <div>
-          <p class="inspector-eyebrow" id="inspection-eyebrow">CELL STUDY</p>
-          <h2 id="inspection-title">Microscopic View</h2>
-        </div>
-        <button
-          class="dialog-close"
-          id="dialog-close"
-          aria-label="Close inspection"
-        >
-          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg>
-        </button>
-      </header>
-      <div class="inspection-image-wrap" id="inspection-image-wrap">
-        <img
-          id="inspection-image"
-          src="/art/microscope.png"
-          alt="Magnified onion cells"
-          draggable="false"
-        />
-      </div>
-      <div class="inspection-footer">
-        <p id="inspection-caption">
-          Look closer at the cell boundaries and stained nuclei.
-        </p>
-        <div class="zoom-controls" aria-label="Image magnification">
-          <button id="zoom-out" aria-label="Zoom out">−</button
-          ><output id="zoom-level" aria-live="polite">1×</output
-          ><button id="zoom-in" aria-label="Zoom in">+</button>
-        </div>
-      </div>
-    </dialog>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

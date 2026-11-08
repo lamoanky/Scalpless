@@ -1,388 +1,256 @@
 import "./style.css";
+import { createBench } from "./scene.js";
+import { createOnion } from "./specimens/onion.js";
+import { createPhysics } from "./physics.js";
+import { LabController } from "./lab-controller.js";
+import { installInput } from "./input.js";
 
-const specimens = [
-  {
-    id: "outer",
-    title: "Outer Layer",
-    label: "LAYER 01 · PROTECTIVE SCALES",
-    description:
-      "The thin, papery outer scales protect the fleshy layers underneath.",
-    image: "outer",
-    current: 0,
-    pages: ["Overview", "Protective scales", "Pigmentation", "Surface texture"],
-  },
-  {
-    id: "first",
-    title: "First Layer",
-    label: "LAYER 02 · FLESHY SCALE",
-    description:
-      "A pigmented, fleshy scale. Lift it to inspect the curved surface and its thin epidermis.",
-    image: "first",
-    current: 1,
-    pages: ["Overview", "Fleshy scale", "Epidermis", "Surface texture"],
-  },
-  {
-    id: "inner",
-    title: "Inner Layers",
-    label: "LAYER 03 · INNER SCALES",
-    description:
-      "Concentric fleshy leaf bases form the bulb. Each layer curves around the next.",
-    image: "inner",
-    current: 2,
-    pages: ["Overview", "Layer boundaries", "Inner scales", "Cross section"],
-  },
-  {
-    id: "cells",
-    title: "Onion Cells",
-    label: "CELL STUDY · EPIDERMIS",
-    description:
-      "Inspect the adjoining cell walls and the stained structures within each cell.",
-    image: "cells",
-    current: 1,
-    pages: ["Overview", "Cell walls", "Nuclei", "Tissue pattern"],
-  },
-  {
-    id: "microscope",
-    title: "Microscopic View",
-    label: "CELL STUDY · DETAIL",
-    description:
-      "Look closer at the cell boundaries and stained nuclei. Drag to pan the magnified image.",
-    image: "microscope",
-    current: 2,
-    pages: ["Overview", "Cell boundaries", "Nuclei"],
-  },
-];
-const state = {
-  focused: false,
-  selected: null,
-  tool: null,
-  zoom: 1,
-  panX: 0,
-  panY: 0,
-  cuts: [],
-  inspection: null,
+const $ = (id) => document.getElementById(id);
+const paths = {
+  inspect: "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
+  scalpel: "m15 3 6 6-10 10-7 2 2-7L15 3Zm-9 11 5 5M14 5l5 5",
+  hand: "M7 21 9 4a3 3 0 0 1 6 0l2 17M9 4l3 12 3-12M6 21h3m6 0h3",
+  minus: "M5 12h14",
+  plus: "M5 12h14M12 5v14",
+  home: "m3 11 9-8 9 8M6 10v10h12V10M9 20v-7h6v7",
+  hints: "M9 18h6M10 21h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z",
+  undo: "M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12",
+  layers: "m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5",
+  camera: "M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
+  left: "M20 12H4m6-6-6 6 6 6",
+  right: "M4 12h16m-6-6 6 6-6 6",
+  up: "M12 20V4m-6 6 6-6 6 6",
+  down: "M12 4v16m-6-6 6 6 6-6",
+  lift: "M12 19V5m-6 6 6-6 6 6M5 21h14",
+  lower: "M12 3v14m-6-6 6 6 6-6M5 21h14",
+  rotateLeft: "M4 9a8 8 0 1 1 0 7M4 3v6h6",
+  rotateRight: "M20 9a8 8 0 1 0 0 7M20 3v6h-6",
+  release: "m5 12 5 5L20 7",
+  place: "M12 2v12m-5-5 5 5 5-5M3 14v7h18v-7",
+  peel: "M5 20V7c6 0 5 9 12 9l4-4M17 16l-1-5M5 20c6-5 9 4 16-2",
+  section: "M12 3v18C0 21 0 3 12 3Zm4 2c7 4 7 11 0 15V5Z",
+  membrane: "m4 6 12-3 5 15-12 3L4 6Zm1 5 12-3M7 16l12-3M9 5l5 15",
+  alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
+  reset: "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 6M4 12l1 6a8 8 0 0 0 14-2",
 };
-const $ = (selector) => document.querySelector(selector);
-const stage = $("#stage");
-const dialog = $("#inspection-dialog");
-const status = $("#workspace-status");
-let statusTimer;
+const icon = (name) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
+$("tools").innerHTML = `<div class="tool-group">${[
+  ["inspect", "Inspect (V)"], ["scalpel", "Scalpel (S)"], ["hand", "Forceps (H)"],
+].map(([id, label]) => `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === 'inspect'}">${icon(id)}</button>`).join("")}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
+  ["camera-angles", "camera", "Camera controls"],
+  ["hints", "hints", "Show incision and grasp hints"],
+  ["undo", "undo", "Undo last operation (⌘/Ctrl Z)"],
+  ["reset", "reset", "Reset bench (R)"],
+].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}" ${id === 'hints' ? 'aria-pressed="false"' : ''}>${icon(i)}</button>`).join("")}</div>`;
+const cameraPad = document.createElement("div");
+cameraPad.className = "camera-pad";
+cameraPad.hidden = true;
+cameraPad.id = "camera-pad";
+cameraPad.setAttribute("role", "group");
+cameraPad.setAttribute("aria-label", "Camera controls");
+cameraPad.innerHTML = [
+  ["zoom-out", "minus", "Zoom out (−)"],
+  ["zoom-in", "plus", "Zoom in (+)"],
+  ["home-view", "home", "Return to working view"],
+].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}">${icon(i)}</button>`).join("") + [
+  ["-.15,0", "left", "Orbit left"], ["0,-.12", "up", "Orbit up"],
+  ["0,.12", "down", "Orbit down"], [".15,0", "right", "Orbit right"],
+].map(([value, i, label]) => `<button class="icon-button" data-orbit="${value}" aria-label="${label}">${icon(i)}</button>`).join("");
+document.querySelector(".controls-area").prepend(cameraPad);
+$("camera-angles").setAttribute("aria-expanded", "false");
+$("camera-angles").setAttribute("aria-controls", "camera-pad");
+$("piece-menu").innerHTML = icon("layers");
+$("place-action").innerHTML = icon("place");
+$("manipulation-pad").innerHTML = [
+  ["0,0,-1", "up", "Move away (↑)"], ["0,1,0", "lift", "Lift (Page Up)"],
+  ["rotate-left", "rotateLeft", "Rotate left (Q)"], ["-1,0,0", "left", "Move left (←)"],
+  ["0,0,1", "down", "Move closer (↓)"], ["1,0,0", "right", "Move right (→)"],
+  ["0,-1,0", "lower", "Lower (Page Down)"], ["release", "release", "Release tissue"],
+  ["rotate-right", "rotateRight", "Rotate right (E)"],
+].map(([action, i, label]) => `<button class="icon-button" data-move="${action}" aria-label="${label}">${icon(i)}</button>`).join("");
 
-function announce(message, persistent = false) {
-  clearTimeout(statusTimer);
-  status.textContent = message;
-  status.classList.add("is-visible");
-  if (!persistent)
-    statusTimer = setTimeout(() => status.classList.remove("is-visible"), 4200);
-}
-function resize() {
-  document.documentElement.style.setProperty(
-    "--scale",
-    Math.min(innerWidth / 1672, innerHeight / 941),
-  );
-}
-resize();
-window.addEventListener("resize", resize);
-
-const panels = $("#panels");
-for (const specimen of specimens) {
-  const panel = document.createElement("section");
-  panel.className = "panel";
-  panel.dataset.panel = specimen.id;
-  panel.setAttribute("aria-label", specimen.title);
-  panel.innerHTML = `<button class="panel-main" aria-label="Inspect ${specimen.title}" aria-pressed="false"><h2 class="panel-title">${specimen.id === "inner" ? "" : '<span class="panel-dot" aria-hidden="true"></span>'}${specimen.title}</h2><img class="panel-art" src="/art/${specimen.image}.png" alt="${specimen.title === "Microscopic View" ? "Purple-stained onion cells under magnification" : specimen.title}" draggable="false" /></button><div class="panel-pager" aria-label="${specimen.title} details">${specimen.pages.map((page, index) => `<button class="pager-dot" aria-label="${specimen.title}: ${page}" aria-current="${index === specimen.current}" data-page="${index}"></button>`).join("")}</div>${specimen.id === "microscope" ? '<span class="scale-bar" aria-hidden="true">50μm</span>' : ""}`;
-  panels.appendChild(panel);
-  panel
-    .querySelector(".panel-main")
-    .addEventListener("click", () => select(specimen.id));
-  panel.querySelectorAll(".pager-dot").forEach((button) =>
-    button.addEventListener("click", () => {
-      specimen.current = Number(button.dataset.page);
-      panel
-        .querySelectorAll(".pager-dot")
-        .forEach((dot, index) =>
-          dot.setAttribute("aria-current", String(index === specimen.current)),
-        );
-      select(specimen.id, false);
-      $("#inspector-eyebrow").textContent =
-        specimen.pages[specimen.current].toUpperCase();
-    }),
-  );
-}
-
-function showLayers() {
-  state.focused = false;
-  stage.classList.remove("is-focused");
-  $("#specimen-view").setAttribute("aria-pressed", "false");
-  $("#specimen-view").classList.remove("is-active");
-  $("#layers-view").setAttribute("aria-pressed", "true");
-  $("#layers-view").classList.add("is-active");
-  panels.removeAttribute("inert");
-}
-function select(id, openMicroscope = true) {
-  const specimen = specimens.find((item) => item.id === id);
-  state.selected = id;
-  showLayers();
-  document.querySelectorAll(".panel").forEach((panel) => {
-    const selected = panel.dataset.panel === id;
-    panel.classList.toggle("is-selected", selected);
-    panel
-      .querySelector(".panel-main")
-      .setAttribute("aria-pressed", String(selected));
-  });
-  if (openMicroscope && (id === "cells" || id === "microscope")) {
-    openInspection(id);
-    return;
-  }
-  $("#inspector-title").textContent = specimen.title;
-  $("#inspector-eyebrow").textContent = specimen.label;
-  $("#inspector-description").textContent = specimen.description;
-  $("#inspect-layer").firstChild.textContent =
-    (id === "cells" || id === "microscope"
-      ? "Inspect cells"
-      : "Isolate layer") + " ";
-  $("#layer-inspector").hidden = false;
-}
-$("#close-inspector").addEventListener("click", () => {
-  $("#layer-inspector").hidden = true;
+try {
+  const bench = await createBench($("scene")),
+    onion = await createOnion(bench.scene),
+    physics = await createPhysics(),
+    lab = new LabController(bench, onion, physics);
+  bench.setSpecimen(onion);
+  installInput(lab, bench);
   document
-    .querySelector(`[data-panel="${state.selected}"] .panel-main`)
-    ?.focus({ preventScroll: true });
-});
-$("#inspect-layer").addEventListener("click", () =>
-  openInspection(state.selected),
-);
-
-function updateZoom() {
-  const image = $("#inspection-image");
-  image.style.setProperty("--zoom", state.zoom);
-  image.style.setProperty("--pan-x", `${state.panX}px`);
-  image.style.setProperty("--pan-y", `${state.panY}px`);
-  $("#zoom-level").textContent = `${state.zoom}×`;
-  $("#zoom-out").disabled = state.zoom === 1;
-  $("#zoom-in").disabled = state.zoom === 4;
-}
-function openInspection(id) {
-  const specimen = specimens.find((item) => item.id === id);
-  state.inspection = id;
-  state.zoom = 1;
-  state.panX = state.panY = 0;
-  dialog.dataset.kind = id;
-  $("#inspection-title").textContent = specimen.title;
-  $("#inspection-eyebrow").textContent = specimen.label;
-  $("#inspection-caption").textContent = specimen.description;
-  const image = $("#inspection-image");
-  image.src = `/art/${specimen.image}.png`;
-  image.alt = specimen.title;
-  updateZoom();
-  if (!dialog.open) dialog.showModal();
-}
-$("#dialog-close").addEventListener("click", () => dialog.close());
-dialog.addEventListener("click", (event) => {
-  if (event.target === dialog) {
-    const r = dialog.getBoundingClientRect();
-    if (
-      event.clientX < r.left ||
-      event.clientX > r.right ||
-      event.clientY < r.top ||
-      event.clientY > r.bottom
-    )
-      dialog.close();
-  }
-});
-$("#zoom-in").addEventListener("click", () => {
-  state.zoom = Math.min(4, state.zoom + 0.5);
-  updateZoom();
-});
-$("#zoom-out").addEventListener("click", () => {
-  state.zoom = Math.max(1, state.zoom - 0.5);
-  if (state.zoom === 1) state.panX = state.panY = 0;
-  updateZoom();
-});
-let panStart = null;
-const imageWrap = $("#inspection-image-wrap");
-imageWrap.addEventListener("pointerdown", (event) => {
-  if (state.zoom === 1) return;
-  panStart = {
-    x: event.clientX,
-    y: event.clientY,
-    originX: state.panX,
-    originY: state.panY,
+    .querySelectorAll("button[data-tool]")
+    .forEach((button) =>
+      button.addEventListener("click", () => lab.setTool(button.dataset.tool)),
+    );
+  $("zoom-out").onclick = () => bench.zoom(-1);
+  $("zoom-in").onclick = () => bench.zoom(1);
+  $("home-view").onclick = () => bench.home();
+  $("camera-angles").onclick = () => {
+    cameraPad.hidden = !cameraPad.hidden;
+    $("camera-angles").setAttribute("aria-expanded", String(!cameraPad.hidden));
   };
-  imageWrap.setPointerCapture(event.pointerId);
-});
-imageWrap.addEventListener("pointermove", (event) => {
-  if (!panStart) return;
-  const limit = 150 * (state.zoom - 1);
-  state.panX = Math.max(
-    -limit,
-    Math.min(limit, panStart.originX + event.clientX - panStart.x),
-  );
-  state.panY = Math.max(
-    -limit,
-    Math.min(limit, panStart.originY + event.clientY - panStart.y),
-  );
-  updateZoom();
-});
-imageWrap.addEventListener("pointerup", () => (panStart = null));
-imageWrap.addEventListener("pointercancel", () => (panStart = null));
-
-$("#specimen-view").addEventListener("click", () => {
-  state.focused = true;
-  stage.classList.add("is-focused");
-  panels.setAttribute("inert", "");
-  $("#layer-inspector").hidden = true;
-  $("#specimen-view").setAttribute("aria-pressed", "true");
-  $("#specimen-view").classList.add("is-active");
-  $("#layers-view").setAttribute("aria-pressed", "false");
-  $("#layers-view").classList.remove("is-active");
-  announce("Specimen view. Select Layers to bring back the study panels.");
-});
-$("#layers-view").addEventListener("click", showLayers);
-$("#magnify").addEventListener("click", () => openInspection("microscope"));
-
-const surface = $("#cut-surface");
-function setTool(tool) {
-  state.tool = state.tool === tool ? null : tool;
-  $("#scalpel").setAttribute("aria-pressed", String(state.tool === "scalpel"));
-  $("#forceps").setAttribute("aria-pressed", String(state.tool === "forceps"));
-  surface.classList.toggle("tool-enabled", Boolean(state.tool));
-  surface.classList.toggle("forceps-enabled", state.tool === "forceps");
-  surface.setAttribute("tabindex", state.tool ? "0" : "-1");
-  if (state.tool === "scalpel")
-    announce(
-      "Scalpel selected. Drag across the onion to mark an incision.",
-      true,
-    );
-  else if (state.tool === "forceps")
-    announce(
-      "Forceps selected. Select the onion or a layer to inspect it.",
-      true,
-    );
-  else status.classList.remove("is-visible");
-}
-$("#scalpel").addEventListener("click", () => setTool("scalpel"));
-$("#forceps").addEventListener("click", () => setTool("forceps"));
-function point(event) {
-  const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(
-    surface.getScreenCTM().inverse(),
-  );
-  return [p.x, p.y];
-}
-let activeCut = null;
-function renderCuts() {
-  $("#cut-lines").replaceChildren(
-    ...state.cuts.map((points) => {
-      const path = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "polyline",
-      );
-      path.classList.add("cut-line");
-      path.setAttribute("points", points.map((p) => p.join(",")).join(" "));
-      return path;
-    }),
-  );
-}
-surface.addEventListener("pointerdown", (event) => {
-  if (state.tool === "forceps") {
-    select("first", false);
-    openInspection("first");
-    return;
-  }
-  if (state.tool !== "scalpel") return;
-  activeCut = [point(event)];
-  state.cuts.push(activeCut);
-  surface.setPointerCapture(event.pointerId);
-  renderCuts();
-});
-surface.addEventListener("pointermove", (event) => {
-  if (!activeCut) return;
-  activeCut.push(point(event));
-  renderCuts();
-});
-surface.addEventListener("pointerup", () => {
-  if (!activeCut) return;
-  activeCut = null;
-  announce("Incision marked. Select forceps to inspect a layer.");
-});
-surface.addEventListener("pointercancel", () => (activeCut = null));
-surface.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" && event.key !== " ") return;
-  event.preventDefault();
-  if (state.tool === "forceps") {
-    select("first", false);
-    openInspection("first");
-  }
-  if (state.tool === "scalpel") {
-    state.cuts.push([
-      [225, 140],
-      [238, 205],
-      [250, 280],
-      [265, 350],
-    ]);
-    renderCuts();
-    announce("Incision marked. Select forceps to inspect a layer.");
-  }
-});
-function reset() {
-  state.focused = false;
-  state.selected = null;
-  state.tool = null;
-  state.zoom = 1;
-  state.panX = state.panY = 0;
-  state.cuts = [];
-  activeCut = null;
-  showLayers();
-  renderCuts();
-  $("#layer-inspector").hidden = true;
-  document.querySelectorAll(".panel").forEach((panel) => {
-    panel.classList.remove("is-selected");
-    panel.querySelector(".panel-main").setAttribute("aria-pressed", "false");
-  });
-  [0, 1, 2, 1, 2].forEach((current, index) => {
-    specimens[index].current = current;
+  cameraPad.onclick = (e) => {
+    const button = e.target.closest("[data-orbit]");
+    if (button) bench.orbit(...button.dataset.orbit.split(",").map(Number));
+  };
+  $("hints").onclick = () => lab.toggleHints();
+  $("undo").onclick = () => lab.undo();
+  $("reset").onclick = () => {
+    cameraPad.hidden = true;
+    $("camera-angles").setAttribute("aria-expanded", "false");
+    lab.reset();
+  };
+  $("piece-menu").onclick = () => {
+    $("piece-picker").hidden = !$("piece-picker").hidden;
+    $("piece-menu").setAttribute("aria-expanded", String(!$("piece-picker").hidden));
+  };
+  $("piece-picker").onclick = e => {
+    const button = e.target.closest("[data-piece]");
+    if (!button) return;
+    lab.select(button.dataset.piece);
+    $("piece-picker").hidden = true;
+    $("piece-menu").setAttribute("aria-expanded", "false");
+    $("piece-menu").focus();
+  };
+  $("piece-select").onchange = (e) => lab.select(e.target.value);
+  $("primary-action").onclick = () => lab.primaryAction();
+  $("place-action").onclick = () => lab.placeInTray();
+  $("manipulation-pad").onclick = (e) => {
+    const action = e.target.closest("button")?.dataset.move;
+    if (!action) return;
+    if (action === "release") lab.endGrab();
+    else if (action.startsWith("rotate"))
+      lab.rotateHeld(action === "rotate-left" ? -1 : 1);
+    else lab.moveHeld(...action.split(",").map(Number));
+  };
+  let optionKey = "", actionKey = "";
+  function updateUI(state, message) {
     document
-      .querySelectorAll(`[data-panel="${specimens[index].id}"] .pager-dot`)
-      .forEach((dot, i) =>
-        dot.setAttribute("aria-current", String(i === current)),
+      .querySelectorAll("button[data-tool]")
+      .forEach((b) =>
+        b.setAttribute("aria-pressed", String(b.dataset.tool === state.tool)),
       );
+    $("hints").setAttribute("aria-pressed", String(state.hints));
+    $("undo").disabled = !state.undo && !state.held && !lab.cutting;
+    $("cut-progress").hidden = state.tool !== "scalpel";
+    $("cut-progress-fill").style.width = `${state.cut * 100}%`;
+    $("cut-percentage").textContent = `${Math.round(state.cut * 100)}%`;
+    $("context-controls").hidden =
+      state.tool === "inspect" ||
+      (state.tool === "hand" && !state.available.length);
+    $("piece-select").hidden = state.tool !== "hand";
+    $("piece-menu").hidden = state.tool !== "hand";
+    $("piece-menu").disabled = Boolean(state.held);
+    if (state.tool !== "hand" || state.held) {
+      $("piece-picker").hidden = true;
+      $("piece-menu").setAttribute("aria-expanded", "false");
+    }
+    $("piece-select").disabled = Boolean(state.held);
+    const key = state.available.map((p) => p.id).join();
+    if (key !== optionKey) {
+      $("piece-select").replaceChildren(
+        ...state.available.map((p) => new Option(p.label, p.id)),
+      );
+      $("piece-picker").replaceChildren(...state.available.map(p => {
+        const button = document.createElement("button");
+        button.className = "icon-button tissue-choice";
+        button.dataset.piece = p.id;
+        button.setAttribute("aria-label", p.label);
+        button.innerHTML = icon(p.id === "section" ? "section" : p.id === "epidermis" ? "membrane" : "layers");
+        // A progressively lighter pigment identifies deeper fleshy layers visually.
+        const layer = Number(p.id.split("-")[1]);
+        if (Number.isFinite(layer)) button.style.setProperty("--tissue", `hsl(305 32% ${34 + layer * 5}%)`);
+        return button;
+      }));
+      optionKey = key;
+    }
+    $("piece-select").value = state.selected;
+    $("piece-picker").querySelectorAll("[data-piece]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.piece === state.selected)));
+    $("cut-progress").setAttribute("aria-valuenow", String(Math.round(state.cut * 100)));
+    const detached = state.held && state.pieces[state.held].detached;
+    const actionLabel =
+      state.tool === "scalpel"
+        ? state.cutOpen
+          ? "Use forceps"
+          : "Trace supported seam"
+        : state.held
+          ? detached
+            ? "Release tissue"
+            : "Peel further"
+          : state.selected === "section" ||
+              state.pieces[state.selected]?.detached
+            ? "Lift selected piece"
+            : "Grasp & peel";
+    const actionIcon = state.tool === "scalpel" ? (state.cutOpen ? "hand" : "scalpel") : state.held ? (detached ? "release" : "peel") : "lift";
+    $("primary-action").setAttribute("aria-label", actionLabel);
+    if (actionKey !== actionIcon) {
+      $("primary-action").innerHTML = icon(actionIcon);
+      actionKey = actionIcon;
+    }
+    $("primary-action").disabled = lab.autoCut;
+    $("place-action").hidden = !detached;
+    $("manipulation-pad").hidden = !state.held;
+    $("tool-hint").textContent =
+      state.tool === "inspect"
+        ? "Drag to look around. Scroll to move closer."
+        : state.tool === "scalpel"
+          ? state.cutOpen
+            ? "The section is free. Switch to forceps to lift it."
+            : "Drag along the front seam. Short strokes add up. Right drag to look around."
+          : state.held
+            ? detached
+              ? "Drag to carry · Q / E to rotate · Release to place"
+              : "Pull away to peel. Move back to relax. Esc to cancel."
+            : state.cutOpen
+              ? "Grasp an exposed edge and pull gently. Right drag to look around."
+              : "Make the incision with the scalpel first.";
+    if (message) $("status").textContent = message;
+  }
+  lab.subscribe(updateUI);
+  updateUI(lab.getState());
+  let last = performance.now(),
+    accumulator = 0,
+    frames = [],
+    manipulationFrames = [],
+    readyFrames = 0;
+  bench.renderer.setAnimationLoop((now) => {
+    const elapsed = (now - last) / 1000;
+    const dt = Math.min(0.05, elapsed);
+    last = now;
+    if (document.hidden) return;
+    accumulator += dt;
+    while (accumulator >= 1 / 60) {
+      physics.step();
+      accumulator -= 1 / 60;
+    }
+    lab.update(dt);
+    bench.controls.update();
+    bench.render(dt);
+    frames.push(elapsed);
+    if (lab.held || lab.cutting) {
+      manipulationFrames.push(elapsed);
+      if (manipulationFrames.length > 360) manipulationFrames.shift();
+    }
+    if (frames.length > 180) frames.shift();
+    if (++readyFrames === 3) {
+      $("loading").classList.add("is-hidden");
+      document.documentElement.dataset.ready = "true";
+    }
   });
-  $("#scalpel").setAttribute("aria-pressed", "false");
-  $("#forceps").setAttribute("aria-pressed", "false");
-  surface.classList.remove("tool-enabled", "forceps-enabled");
-  surface.setAttribute("tabindex", "-1");
-  dialog.close();
-  updateZoom();
-  announce("Workspace reset.");
-}
-$("#reset").addEventListener("click", reset);
-window.addEventListener("keydown", (event) => {
-  if (
-    event.ctrlKey ||
-    event.metaKey ||
-    event.altKey ||
-    event.target.matches("input,textarea,select")
-  )
-    return;
-  if (dialog.open) return;
-  const actions = {
-    v: () => $("#specimen-view").click(),
-    l: showLayers,
-    m: () => openInspection("microscope"),
-    r: reset,
+  window.__scalpless = {
+    getDebug: () => ({
+      ...lab.getDebug(),
+      fps: frames.length / frames.reduce((a, b) => a + b, 0),
+      manipulationFps: manipulationFrames.length
+        ? manipulationFrames.length /
+          manipulationFrames.reduce((a, b) => a + b, 0)
+        : null,
+      physicsBodies: physics.bodies.size,
+    }),
   };
-  if (actions[event.key.toLowerCase()]) {
-    event.preventDefault();
-    actions[event.key.toLowerCase()]();
-  }
-  if (event.key === "Escape") {
-    $("#layer-inspector").hidden = true;
-    if (state.tool) setTool(state.tool);
-  }
-});
-window.__scalpless = { state };
-Promise.all([...document.images].map((image) => image.decode().catch(() => {})))
-  .then(() => document.fonts.ready)
-  .then(() => {
-    document.documentElement.dataset.ready = "true";
-  });
+} catch (error) {
+  console.error(error);
+  $("loading").innerHTML =
+    `<button class="icon-button" aria-label="The 3D bench could not start. Reload the page.">${icon("alert")}</button><span class="sr-only">The 3D bench could not start. Reload this page in a browser with WebGL enabled.</span>`;
+  $("loading").querySelector("button").onclick = () => location.reload();
+}
