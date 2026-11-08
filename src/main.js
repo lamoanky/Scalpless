@@ -171,17 +171,18 @@ try {
   }
   const input = installInput(lab, bench);
   const handTracking = installHandTracking(bench, input);
-  const organSlide = installOrganSlide(lab, bench);
   const cameraPanel = $("hand-tracking-panel");
   const cameraPanelOpen = () => cameraPanel?.hidden === false;
-  const teachingChat = installTeachingChat(lab, bench, {
-    onToggle: open => organSlide.setSuspended(open || cameraPanelOpen()),
+  const teachingChat = installTeachingChat(lab, bench);
+  const organSlide = installOrganSlide(lab, bench, {
+    onOpen: id => teachingChat.explainOrgan(id,lab.getState()),
+    onClear: () => teachingChat.clearStudy(),
   });
   const liquidGlass = installLiquidGlass(bench);
   // Observe setup-panel visibility without touching the camera/gesture adapter.
   if (cameraPanel) new MutationObserver(() => {
     if (cameraPanelOpen()) teachingChat.close();
-    organSlide.setSuspended(teachingChat.isOpen || cameraPanelOpen());
+    organSlide.setSuspended(cameraPanelOpen());
   }).observe(cameraPanel, {attributes:true, attributeFilter:["hidden"]});
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {

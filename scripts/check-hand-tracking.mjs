@@ -1,3 +1,4 @@
+import { mockTutor } from "./mock-tutor.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -104,6 +105,7 @@ try {
     route.fulfill({ body: stub, contentType: "text/javascript" }),
   );
   const page = await context.newPage();
+await mockTutor(page);
   monitor(page);
   await ready(page);
   const debug = () => page.evaluate(() => window.__scalpless.getDebug());

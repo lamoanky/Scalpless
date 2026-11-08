@@ -102,3 +102,34 @@
   #bench .organ-slide { max-height:calc(100dvh - 96px); overflow:auto; }
   .organ-slide .slide-preview { height:100px; }
 }
+
+/* Organ labels form a native scroll-snap history; the 3D view stays independent. */
+#bench .organ-slide { display:block; }
+.organ-slide .slide-heading { padding:8px 8px 4px 16px; gap:4px; }
+.organ-slide .slide-heading > .icon-button { flex-shrink:0; }
+.study-history { display:flex; flex:1; min-width:0; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior:contain; }
+.study-history::-webkit-scrollbar { display:none; }
+.study-label { flex:0 0 100%; min-width:0; min-height:48px; padding:6px 0; background:transparent; color:inherit; scroll-snap-align:start; font:650 20px/1.35 Orbitron,Inter,sans-serif; letter-spacing:.1em; text-transform:uppercase; text-align:left; }
+.organ-slide .slide-preview { margin:0 16px 12px; height:150px; min-height:0; }
+.study-navigation { display:flex; justify-content:space-between; padding:0 12px 6px; }
+#bench.has-teaching-chat .organ-slide { right:380px; width:280px; }
+#bench.has-teaching-chat .study-launch { right:380px; }
+.teaching-panel .teaching-heading { padding:4px 8px 4px 20px; }
+.teaching-panel .teaching-status:empty { display:none; }
+.teaching-panel .teaching-foot { justify-content:flex-end; }
+.teaching-panel.has-study .teaching-suggestions { display:none; }
+@media(max-width:760px) {
+  #bench .organ-slide, #bench.has-teaching-chat .organ-slide { top:76px; left:12px; right:12px; width:auto; }
+  .organ-slide .study-label { font-size:18px; }
+  .organ-slide .slide-preview { height:96px; margin:0 12px 8px; }
+  .study-navigation { position:absolute; bottom:8px; left:12px; right:12px; pointer-events:none; }
+  .study-navigation button { pointer-events:auto; background:#ffffff70; }
+  #bench.has-organ-study .teaching-panel { top:calc(88px + var(--study-height, 156px)); max-height:calc(100dvh - 304px - var(--study-height, 156px)); }
+  #bench.has-teaching-chat .study-launch { right:12px; }
+  .teaching-panel .teaching-scroll { min-height:32px; }
+  .teaching-panel .teaching-composer { padding:4px 12px; }
+  .teaching-panel .context-sharing { min-height:40px; }
+}
+@media(max-height:600px) and (min-width:761px) {
+  .organ-slide .slide-preview { height:90px; }
+}

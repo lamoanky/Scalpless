@@ -14,9 +14,10 @@ await page.route("https://generativelanguage.googleapis.com/**",async route=>{
 });
 await page.route("**/api/tutor",async route=>{
   calls.push({url:route.request().url(),headers:route.request().headers(),body:route.request().postDataJSON()});
+  const requestReply=reply;
   if(offline){await route.abort();return;}
   if(hold)await new Promise(resolve=>setTimeout(resolve,1000));
-  await route.fulfill({status,contentType:"application/json",body:JSON.stringify(status===200?{answer:reply}:{error:"Provider details must not appear"})}).catch(()=>{});
+  await route.fulfill({status,contentType:"application/json",body:JSON.stringify(status===200?{answer:requestReply}:{error:"Provider details must not appear"})}).catch(()=>{});
 });
 const state=()=>page.evaluate(()=>window.__scalpless.getDebug().state);
 const chat=()=>page.locator("#teaching-toggle").click();
@@ -30,6 +31,8 @@ try {
   assert.equal(calls.length,0);await chat();
   assert.equal(await page.locator("#teaching-settings, #teaching-key, #teaching-mode, #teaching-model").count(),0);
   await page.locator(".question-idea").first().click();assert.equal(calls.length,0,"Opening chat and choosing a suggestion never send a request");
+  for(const text of ["A closer look.","Ask about your specimen, an organ’s function, or your next step in the virtual lab.","Ready when you are. Ask about your specimen.","AI can make mistakes. Check with your teacher."])
+    assert(!await page.locator("#teaching-panel").textContent().then(value=>value.includes(text)));
   const intact=await state();
   await submit("What does a frog heart do?");await answered();
   assert.equal(calls.length,1,"First question uses the server with no setup step");
@@ -45,7 +48,14 @@ try {
   await choose("liver");await page.locator("#primary-action").click();
   assert(await page.locator("#organ-slide").isVisible());
   const organFont=await page.locator("#organ-slide").evaluate(e=>getComputedStyle(e).fontFamily);
-  await chat();assert(!await page.locator("#organ-slide").isVisible());
+  assert(await page.locator("#teaching-panel").isVisible());
+  await page.waitForFunction(()=>document.getElementById("teaching-panel").getAttribute("aria-busy")==="false");
+  assert.equal(calls.at(-1).body.context.study,"Liver");
+  assert.match(calls.at(-1).body.question,/frog's liver/);
+  const autoCount=calls.length;
+  await page.locator('[aria-label="Minimize organ study"]').click();
+  await page.getByRole("button",{name:"Open organ study",exact:true}).click();
+  assert.equal(calls.length,autoCount,"Reopening reuses the existing explanation");
   for(const selector of ["#teaching-panel","#teaching-question",".question-idea"]) {
     assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).fontFamily),organFont);
     assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).textTransform),"uppercase");
@@ -56,12 +66,13 @@ try {
   await question.press("Escape");assert(!await page.locator("#teaching-panel").isVisible());
   assert.deepEqual(await state(),held,"Escape closes chat without cancelling the held organ");
   await chat();await submit("What does this organ do?");await answered();
-  assert.equal(calls.at(-1).body.context.held,"Liver");assert.deepEqual(calls.at(-1).body.history,[]);
+  assert.equal(calls.at(-1).body.context.held,"Liver");assert.equal(calls.at(-1).body.history.length,2);
+  assert.equal(calls.at(-1).body.context.study,"Liver");
   assert.deepEqual(await state(),held);
   await page.screenshot({path:"output/teaching-answer.png"});
   await page.locator("#teaching-share").uncheck();reply='<img src="x" onerror="window.bad=true"> This is plain text.';
   await submit("How is that different from the stomach?");await answered();
-  assert.equal(calls.at(-1).body.history.length,2);assert.equal(calls.at(-1).body.context,null);
+  assert.equal(calls.at(-1).body.history.length,4);assert.equal(calls.at(-1).body.context,null);
   assert.equal(await page.locator("#teaching-messages img").count(),0,"Model output is text, never executable markup");
   status=503;await submit("Help me understand");
   await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("not configured"));
@@ -103,6 +114,35 @@ try {
   assert.equal(calls.at(-1).body.context.specimen,"onion");assert.deepEqual(calls.at(-1).body.history,[]);
   assert.match(await page.locator("#teaching-context").textContent(),/Onion/);
   await page.screenshot({path:"output/teaching-onion.png"});
+  // Automatic studies preserve authored reference text when offline and never
+  // apply an answer after reset or after switching to another organ.
+  await page.setViewportSize({width:1440,height:960});
+  await page.goto(`${base}lab.html?specimen=frog`);
+  await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
+  await page.locator('[data-tool="scalpel"]').click();await page.locator("#primary-action").click();
+  await page.waitForFunction(()=>window.__scalpless.getDebug().state.cutOpen);
+  await page.locator('[data-tool="hand"]').click();await page.locator("#primary-action").click();await page.locator("#place-action").click();
+  status=503;await choose("liver");await page.locator("#primary-action").click();
+  await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("Showing the organ reference"));
+  assert.match(await page.locator('[data-study="liver"]').textContent(),/three-lobed liver/);
+  await page.locator("#place-action").click();
+  status=200;hold=true;reply="Delayed heart response should be ignored";
+  await choose("heart");await page.locator("#primary-action").click();
+  await page.waitForFunction(()=>document.getElementById("teaching-panel").getAttribute("aria-busy")==="true");
+  const autoRequests=calls.length;
+  await page.locator("#study-previous").click();
+  await page.waitForTimeout(1200);
+  assert.equal(calls.length,autoRequests,"Previous organ explanation is reused without a request");
+  assert.match(await page.locator("#teaching-context").textContent(),/Liver/);
+  assert(!await page.locator("#teaching-messages").textContent().then(text=>text.includes(reply)));
+  await page.locator("#place-action").click();
+  reply="Delayed lung response should be ignored";
+  await choose("lung-left");await page.locator("#primary-action").click();
+  await page.waitForFunction(()=>document.getElementById("teaching-panel").getAttribute("aria-busy")==="true");
+  await page.locator("#reset").click();await page.waitForTimeout(1200);
+  assert.equal(await page.locator("[data-study]").count(),0);
+  assert.deepEqual(await page.evaluate(()=>window.__scalpless.getDebug().organStudy.history),[]);
+  assert(!await page.locator("#teaching-messages").textContent().then(text=>text.includes(reply)));
   assert.deepEqual(errors,[]);assert.deepEqual(directRequests,[]);
   await writeFile("output/teaching-validation.json",JSON.stringify({passed:true,errors,mockedServerRequests:calls.length,directRequests,checks:["automatic server","no connection fields","matching typography","explicit send only","context opt-out","conversation","plain text","quota","stop/retry","onion","narrow viewport","unconfigured server"]},null,2));
   console.log("Teaching chat passed: automatic server, matching organ typography, context, errors, cancellation, input isolation and mobile.");

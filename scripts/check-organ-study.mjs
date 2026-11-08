@@ -1,8 +1,10 @@
+import { mockTutor } from "./mock-tutor.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});
 const page = await browser.newPage({viewport:{width:1440,height:960}});
+await mockTutor(page);
 const errors=[]; page.on("pageerror",error=>errors.push(error.message));
 const base=process.env.PREVIEW_URL || "http://127.0.0.1:5173/";
 const debug=()=>page.evaluate(()=>window.__scalpless.getDebug());
@@ -25,6 +27,8 @@ try {
     const before=await debug();
     assert.equal(before.organStudy.id,"liver");
     assert.equal(await page.locator("#organ-name").textContent(),"Liver");
+    assert.equal((await page.locator("#organ-slide").innerText()).trim(),"LIVER","Only the organ label is visible copy");
+    assert(await page.locator("#teaching-panel").isVisible(),"Opening a study automatically opens teaching alongside it");
     const preview=page.locator(".slide-preview");await preview.focus();
     await page.keyboard.press("ArrowRight");await page.keyboard.press("ArrowUp");
     assert.deepEqual((await debug()).state,before.state,"Study rotation does not mutate the lab");
@@ -57,7 +61,7 @@ try {
     assert(dropped.state.available.some(p=>p.id==="stomach"),"Collection exposes the digestive organs");
     assert.equal(dropped.organStudy.id,"liver");
     assert.equal(await page.locator("#organ-slide").isVisible(),true,"Release keeps the information panel open");
-    assert.match(await page.locator(".slide-note").textContent(),/removed from the bench/);
+    assert.match(await preview.getAttribute("aria-label"),/removed from the bench/);
     await preview.focus();await page.keyboard.press("ArrowLeft");
     assert.deepEqual((await debug()).state,dropped.state,"Collected study rotation is still independent");
     await page.screenshot({path:`output/organ-collected-${appearance}.png`});
@@ -66,8 +70,20 @@ try {
     // Release in place, without moving away from the original attachment.
     await page.locator("#primary-action").click();
     assert.equal((await debug()).state.pieces.heart.collected,true);
+    const collection=await debug();
+    assert.deepEqual(collection.organStudy.history,["liver","heart"]);
+    await page.locator("#organ-slide").hover();await page.mouse.wheel(0,-300);
+    await page.waitForFunction(()=>window.__scalpless.getDebug().organStudy.id==="liver");
+    assert.deepEqual((await debug()).state,collection.state,"History scrolling is presentation only");
+    await page.locator("#study-next").click();
+    assert.equal((await debug()).organStudy.id,"heart");
+    await page.locator(".study-history").evaluate(e=>{e.scrollLeft=0;});
+    await page.waitForFunction(()=>window.__scalpless.getDebug().organStudy.id==="liver");
+    await page.locator("#organ-name").focus();await page.keyboard.press("PageDown");
+    assert.equal((await debug()).organStudy.id,"heart");
     await page.locator("#undo").click();
     dropped=await debug();
+    assert.deepEqual(dropped.organStudy.history,["liver"]);
     assert.equal(dropped.visibility.heart,true);
     assert.equal(dropped.state.pieces.heart.detached,false);
     assert.equal(dropped.organStudy.id,"liver","Undo restores the previous collected study");
