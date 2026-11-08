@@ -138,6 +138,18 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     } finally {if(current===version)setPending(false);}
   };
   lab.subscribe(updateContext);updateContext(state);
+  // A key in .env.local makes the dev server's /api/tutor ready; use it
+  // without asking the student for a key. Static builds just stay manual.
+  fetch("/api/tutor/status",{cache:"no-store",credentials:"same-origin"})
+    .then(response=>response.ok?response.json():null)
+    .then(data=>{
+      if(!data?.configured||session.status().configured)return;
+      session.configure({mode:"server"});
+      $("teaching-mode").value="server";$("teaching-mode").onchange();
+      $("connection-label").textContent="Connected";
+      if(!pending)setStatus("Ask a question about your specimen.");
+    })
+    .catch(()=>{});
   addEventListener("pagehide",()=>{
     stop();session.forget();$("teaching-key").value="";
     $("connection-label").textContent=session.status().mode==="server"?"Server selected":"Not connected";

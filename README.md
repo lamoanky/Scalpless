@@ -127,15 +127,17 @@ Open **Gemini connection**, enter your own key from [Google AI Studio](https://a
 
 The default text model is `gemini-3.5-flash-lite`, listed in Google's [model catalog](https://ai.google.dev/gemini-api/docs/models) when implemented. You can change the model name in settings if your account uses another supported text model. The adapter uses the documented [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Model availability, quotas and account eligibility can change. No live-provider answer was validated without a real key; automated checks intercept the provider and test the actual request/response boundary.
 
-### Optional server connection
+### Server connection (recommended)
 
-This is the safer development option: the browser sends only questions/history/coarse context to `/api/tutor`, and the server holds the Gemini key. No new dependencies are required.
+The browser sends only questions/history/coarse context to `/api/tutor`; the server holds the Gemini key. No new dependencies are required.
 
-1. Create **`.env.local` in the project root**, which Git ignores. Add `GEMINI_API_KEY=your-key` using your editor. Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
-2. Run `npm run tutor` in a second terminal. It listens only on `127.0.0.1:8787`; restart it after changing `.env.local`. Keep `npm run dev -- --port 5173` running for the app. Vite dev and preview forward `/api/tutor` to the local service; restart either if needed after configuration changes.
-3. In the chat's connection settings choose **Server connection · recommended**, then **Use connection**. Nothing is sent until you submit a question. The service's model comes from the server environment, not the browser model field.
+1. Put your key in **`.env.local` in the project root** (Git ignores it; a template with an empty `GEMINI_API_KEY=` is created locally). Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
+2. Run `npm start` (or `npm run dev` / `npm run preview`). Vite serves `/api/tutor` itself; no second terminal is needed. Restart after changing `.env.local`.
+3. Open the chat. When the server has a key, the chat connects automatically (`GET /api/tutor/status` reports only whether a key exists) and shows **Connected**. Nothing is sent until you submit a question.
 
-The local proxy accepts JSON POSTs from localhost/127.0.0.1 ports 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel, changing connection settings and **Clear** cancel a pending request and ignore late replies.
+`npm run tutor` still starts the same handler as a standalone loopback service on `127.0.0.1:8787` for other hosts. If a request fails, the dev server logs one line with a coarse code such as `[tutor] Gemini request failed: credentials` (bad key) or `model` (unavailable model).
+
+The tutor route accepts JSON POSTs from localhost/127.0.0.1 ports 3000, 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers; only the coarse failure code above is logged. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel, changing connection settings and **Clear** cancel a pending request and ignore late replies.
 
 For deployment, supply an authenticated same-origin `/api/tutor` route with a server secret manager, per-user authorization/quotas and the appropriate origin policy. Do not publish this loopback development service as an unauthenticated public proxy. The production static build alone cannot provide that route.
 

@@ -40,3 +40,21 @@ test("proxy limits requests and sanitizes upstream failures",async()=>{
     assert.equal((await post(url,{question:"Again"})).status,429);
   });
 });
+
+test("status reports only whether a key is configured",async()=>{
+  await withServer({},async url=>assert.deepEqual(await (await fetch(`${url}/status`)).json(),{configured:false}));
+  await withServer({key},async url=>{
+    const result=await fetch(`${url}/status`);
+    assert.equal(result.status,200);
+    const text=await result.text();
+    assert.deepEqual(JSON.parse(text),{configured:true});assert(!text.includes(key));
+    assert.equal((await fetch(`${url}/status`,{method:"POST"})).status,405);
+  });
+});
+
+test("dev server origin on port 3000 is allowed",async()=>{
+  await withServer({key,fetchImpl:async()=>new Response(JSON.stringify({candidates:[{content:{parts:[{text:"Pumps blood."}]},finishReason:"STOP"}]}))},async url=>{
+    const result=await post(url,{question:"What does the heart do?"},{Origin:"http://127.0.0.1:3000"});
+    assert.equal(result.status,200);assert.deepEqual(await result.json(),{answer:"Pumps blood."});
+  });
+});

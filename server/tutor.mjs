@@ -2,16 +2,24 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { DEFAULT_MODEL, TeachingError, generateAnswer, modelName, sanitizeQuestion } from "../src/teaching-request.js";
 
-// Optional loopback-only development proxy. Deployment still needs real user
+export const DEV_ORIGINS=[3000,5173,4173].flatMap(port=>[`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
+
+// Request handler for /api/tutor, shared by the standalone loopback server and
+// the Vite dev/preview middleware. Deployment still needs real user
 // authentication and per-user quotas at the hosting boundary (see README).
-export function createTutorServer({key="",model=DEFAULT_MODEL,fetchImpl=fetch,
-  allowedOrigins=["http://127.0.0.1:5173","http://localhost:5173","http://127.0.0.1:4173","http://localhost:4173"],
-  rateLimit=20,timeoutMs=30000}={}) {
+export function createTutorHandler({key="",model=DEFAULT_MODEL,fetchImpl=fetch,
+  allowedOrigins=DEV_ORIGINS,rateLimit=20,timeoutMs=30000,onFailure=()=>{}}={}) {
   modelName(model);
   let inFlight=0,requests=[];
-  const server=http.createServer(async(req,res)=>{
+  return async(req,res)=>{
     res.setHeader("Cache-Control","no-store");res.setHeader("X-Content-Type-Options","nosniff");
     const send=(status,body)=>{if(!res.destroyed&&!res.writableEnded){res.writeHead(status,{"Content-Type":"application/json"});res.end(JSON.stringify(body));}};
+    // Lets the chat pick the server connection automatically. Reports only
+    // whether a key exists, never the key or model account details.
+    if(req.url==="/api/tutor/status"){
+      if(req.method!=="GET"){res.setHeader("Allow","GET");send(405,{error:"Use GET"});return;}
+      send(200,{configured:Boolean(key)});return;
+    }
     if(req.url!=="/api/tutor"){send(404,{error:"Not found"});return;}
     if(req.method!=="POST"){res.setHeader("Allow","POST");send(405,{error:"Use POST"});return;}
     if(!allowedOrigins.includes(req.headers.origin)){send(403,{error:"Origin not allowed"});return;}
@@ -42,10 +50,17 @@ export function createTutorServer({key="",model=DEFAULT_MODEL,fetchImpl=fetch,
       send(200,{answer});
     } catch(error) {
       const status=controller.signal.aborted?504:error instanceof TeachingError&&["empty","long"].includes(error.code)?400:error?.code==="quota"?429:502;
+      // Only the coarse failure code (e.g. "credentials", "model") is reported.
+      onFailure(controller.signal.aborted?"timeout":error instanceof TeachingError?error.code:"internal");
       // Provider payloads, prompts, credentials and stack traces are never logged or returned.
       send(status,{error:status===400?"Invalid question":"Teaching service could not answer"});
     } finally {clearTimeout(timeout);inFlight--;}
-  });
+  };
+}
+
+// Optional standalone loopback server (npm run tutor).
+export function createTutorServer(options={}) {
+  const server=http.createServer(createTutorHandler(options));
   server.requestTimeout=35000;server.headersTimeout=10000;
   return server;
 }
