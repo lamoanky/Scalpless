@@ -1,6 +1,6 @@
 # Frog specimen
 
-Open `/lab.html?specimen=frog`, or choose the frog icon at the upper left of the bench. The landing page's frog card links here too.
+Open `/lab.html?specimen=frog`, or choose the frog icon at the upper left of the bench. The landing page uses the blue variant (`&appearance=blue`), keeping the same meshes from the opening through rotation onto the platform and interactive dissection. The copper version remains the default on this direct route.
 
 This is a custom frog with reference-guided proportions and simplified ventral anatomy. It is not an anatomical scan or a validated training model. No third-party frog mesh or textures are bundled.
 
@@ -77,3 +77,9 @@ Final local validation: 82 unit tests, the frog browser interaction check, and t
 The copper exterior pass changes the skin palette, microstructure, mouth pigment, eye orientation, jaw profile and shallow limb contours. The blue anatomy toggle, organ materials, incision surface, grasp metadata and controller remain as before. The supplied exterior photograph is a visual target; this is still custom procedural geometry, not a reconstruction of that specimen.
 
 Exterior close-up review also removed the redundant raised incision ring, projected the mouth crease onto the revised head surface, and inset the forelimb roots into the torso. The visible incision guide is still controlled by hints and uses the unchanged supported seam.
+
+## Continuous blue landing specimen
+
+The blue exterior is authored in `src/landing-frog.js`. Its torso and abdominal panel share the existing incision surface. The anatomy, guide, grasp points and collision shapes receive the same local height transform so contact remains aligned. Limb vertices rotate around fixed shoulder/hip pivots during entry; their final collision shapes are baked in lab coordinates. The controller, input events and physics implementation are unchanged. The same mesh UUIDs survive opening, rotation and handoff. Native blue-skin reset returns to the landed pose; it does not restart the landing animation.
+
+Blue-variant validation also covers manual partial/repeated incisions and mouse removal of all six organs. The taller cover uses its transformed tissue point for clearance checks, so tipping it beside the specimen correctly exposes the organs. Blue lighting uses neutral tone mapping; the direct copper specimen retains ACES.

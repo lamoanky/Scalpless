@@ -11,17 +11,17 @@ npm install
 npm run dev -- --port 5173
 ```
 
-Open http://127.0.0.1:5173 for the landing page. **Start Dissection** and **Get Started** open the intact bench at http://127.0.0.1:5173/lab.html. Keep the terminal running while using the app. The production build includes both entry pages.
+Open http://127.0.0.1:5173 for the landing page. Scroll to enter the frog lab, or use the arrow at the upper right. The direct frog route is http://127.0.0.1:5173/lab.html?specimen=frog; `/lab.html` still opens the onion. Keep the terminal running while using the app. The production build includes both entry pages.
 
 ## Landing page
 
-Scroll through three stages: a cropped onion close-up, a full cutaway with orbit lines, and a specimen collection. The opening preserves the original onion image. During the first scroll interval, an aligned, additive crossfade hands it over to the live 3D onion; the model then gets smaller and completes two rotations as the scroll advances. Scrolling back reverses the motion. All movement derives from scroll position; there is no automatic tour.
+The text-free opening is a live Three.js illustration: a seated blue spotted frog, five glass anatomy-study displays, light rings and a frosted reflective floor. All geometry and graphic textures are authored locally. The supplied reference guides the composition; this is a procedural interpretation, not the original image or an imported frog model. The display studies are decorative, not additional available specimens or a functioning microscope.
 
-The landing page reuses the specimen geometry, 4K textures and local HDRI. Its background moves from a blue close-up with diagonal light bands into a softly defocused glass laboratory, then a specimen collection with luminous floor rings and the reference's silver instruments. These are three static image plates blended by scroll position, so the backdrop does not add to the 3D render workload. Its framing and material adjustments affect only the landing instance. The lab still starts intact. Onion and a basic frog prototype are available; Microscopy is marked as coming later.
+The opening and bench share one renderer and the same blue frog meshes. Scroll rotates the specimen belly-up, unfolds its limbs at the shoulders and hips, and brings the platform beneath it. The camera eases into the working view. There is no model swap or crossfade. At the end, the presentation transform becomes exactly the identity, physics resumes, and mouse/keyboard input passes to the existing lab controller. The blue specimen has the same supported abdominal incision, removable panel, organs, undo and reset. The copper specimen remains available at `/lab.html?specimen=frog`; the blue variant is `/lab.html?specimen=frog&appearance=blue`.
 
-The page adapts to narrow screens, uses native navigation links and FAQ disclosures, and respects reduced-motion preferences. **Motion on/off** switches between animated framing and a static reference image while keeping all three sections accessible. The reference image also remains visible if 3D assets fail to load.
+The icon-only entry controls have accessible names and visible keyboard focus. Reduced motion removes camera travel and rotation. Before entry, reverse scrolling restores the opening. Browser Back returns to the opening; `#lab` reloads into the lab, and the top-center return arrow starts a fresh visit. The lab loads inside a same-origin iframe, and its canvas renders both the opening and interactive bench. Tool input and physics stay locked until the frog has landed. Presentation messages are accepted only from the same-origin parent. Camera access remains opt-in through the lab's existing camera button.
 
-`python3 scripts/prepare-landing-art.py` regenerates `public/art/landing-onion-reference.webp` and the three `landing-*-background.webp` plates from the saved reference and retouched lab floor. The onion and instruments retain the source pixels, with conventional matte extraction and annotation cleanup. Resampling improves enlargement but cannot recover detail beyond the original 471 × 503 onion crop. The background combines the retouched floor with recreated glassware, reflections and lighting; it is not a pixel-for-pixel copy of the three-panel landing mockup.
+`public/art/frog-landing-poster.webp` is a render of the opening scene used during loading and if WebGL/HDRI loading fails. The direct-lab arrow remains usable. Legacy onion landing artwork remains in `public/art/` but is no longer used by the landing page.
 
 ## Working at the bench
 
@@ -38,7 +38,7 @@ There are no timing challenges. Controls have 48 px minimum targets, visible foc
 
 ## Frog dissection
 
-Choose the frog icon at the upper left, the landing page's frog card, or open http://127.0.0.1:5173/lab.html?specimen=frog. Trace the hinted oval incision around the abdominal panel, lift it with forceps, then inspect and remove the heart, liver, two lungs, stomach and intestines. Move the liver aside to reach the deeper digestive organs. Mouse, keyboard, and the existing webcam adapter share the same lab actions. The onion icon returns to the onion bench; switching specimens starts a fresh session.
+Scroll through the opening scene, choose the frog icon at the upper left of the bench, or open http://127.0.0.1:5173/lab.html?specimen=frog. Trace the hinted oval incision around the abdominal panel, lift it with forceps, then inspect and remove the heart, liver, two lungs, stomach and intestines. Move the liver aside to reach the deeper digestive organs. Mouse, keyboard, and the existing webcam adapter share the same lab actions. The onion icon returns to the onion bench; switching specimens starts a fresh session.
 
 The custom frog has continuous tapered limbs, webbed feet, gold irises, authored 2K skin/tissue maps and irregular organ lobes. Natural ventral skin is the default; the layers button beside the specimen selector reveals a blue translucent anatomy view. This view does not change dissection progress, and reset restores natural skin. Organs remain pre-separated rigid pieces, and the abdominal panel combines skin and muscle. Connective-tissue cutting and detailed anatomical validation are not included. See [frog model resources and implementation notes](docs/frog-model.md) for the visual reference, supported workflow and import requirements for an exact licensed replacement.
 
@@ -76,7 +76,9 @@ The original gesture sandbox is preserved at `npm run gesture:sandbox` → http:
 - `src/lab-environment.js`: transparent reflection/shadow catchers and a two-tier white/cyan platform; shared platform bounds keep rendering and collisions aligned.
 - `src/domain.js`: cut coverage and snapshot history independent of rendering.
 - `src/main.js`, `lab.html`, `src/style.css`: bench bootstrap, render loop and compact accessible controls.
-- `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: scroll scene, deterministic framing, landing content and responsive styles.
+- `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: reversible scroll presentation, input handoff and responsive icon controls.
+- `src/landing-scene.js`, `src/landing-frog.js`: shared blue exterior, shoulder/hip posing, glass displays, procedural textures and reflected floor.
+- `src/landing-presentation.js`: validates parent messages, applies scroll presentation and releases input/physics after the final pose. Controller actions and camera controls remain unchanged after entry.
 
 The specimen stays stationary during cutting. Attached tissue is deformed around its basal attachment with bounded displacement; separation progress is stored separately from its current bend. A detached shell retains its shape and becomes a rigid body. Collision geometry approximates its volume using smaller convex patches to preserve concavity. Held pieces follow constrained targets; release transfers them back to simulation with restrained motion.
 
@@ -107,7 +109,8 @@ Start the local server, then:
 npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
-npm run test:landing      # scroll, navigation, lab entry and mobile checks
+npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
+FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks
 npm run test:tracking     # camera lifecycle and gesture-driven onion workflow
 npm run test:sandbox      # retained branch's rigged-hand sandbox browser checks
 npx playwright install ffmpeg # once, for video recording
@@ -115,7 +118,7 @@ npm run capture           # PNGs and a recorded cut–peel–place walkthrough
 npm run capture:landing   # recorded landing-page scroll walkthrough
 ```
 
-Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Landing checks default to port 4173 (the production preview); bench checks and captures default to port 5173. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`. Landing outputs include `landing-hero.png`, `landing-explore.png`, `landing-collection.png`, mobile views, `landing-validation.json` and `scalpless-landing-scroll.webm`.
+Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Landing checks default to port 4173 (the production preview); bench checks and captures default to port 5173. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`. Landing outputs include `landing-hero.png`, `landing-transition.png`, `landing-interactive.png`, mobile views, `landing-validation.json` and `scalpless-landing-scroll.webm`.
 
 Browser checks verify the absence of visible interface text and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
 

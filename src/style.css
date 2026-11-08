@@ -341,3 +341,12 @@ button:disabled {
     transition: none !important;
   }
 }
+
+/* The landing owns input while the actual specimen is being posed. */
+.landing-preview .controls-area,
+.landing-preview .context-controls,
+.landing-preview .specimen-switcher,
+.landing-preview .anatomy-toggle,
+.landing-preview .hand-tracking,
+.landing-preview #hand-tracking-toggle { visibility:hidden; pointer-events:none; }
+.landing-preview #bench > :not(#scene) { visibility:hidden; pointer-events:none; }

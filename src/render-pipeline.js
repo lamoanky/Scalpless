@@ -34,6 +34,7 @@ export async function createRenderPipeline(renderer, scene, camera) {
       crop: { value: new THREE.Vector2(1, 1) },
       toneMappingExposure: { value: renderer.toneMappingExposure },
       tissueOcclusion: { value: false },
+      neutralTone: { value: false },
       occlusion: { value: null },
       depth: { value: null },
       inverseProjection: { value: camera.projectionMatrixInverse },
@@ -43,7 +44,7 @@ export async function createRenderPipeline(renderer, scene, camera) {
     fragmentShader: `
       uniform sampler2D tDiffuse,coverage,backdrop;
       uniform sampler2D occlusion,depth;
-      uniform bool tissueOcclusion;
+      uniform bool tissueOcclusion,neutralTone;
       uniform mat4 inverseProjection;
       uniform vec2 aoTexel;
       uniform vec2 crop;
@@ -65,7 +66,7 @@ export async function createRenderPipeline(renderer, scene, camera) {
         }
         // Render-target color is premultiplied by coverage; unpremultiply before
         // tone mapping, then blend against the original image in display space.
-        color=ACESFilmicToneMapping(color/max(alpha,.0001));
+        color=neutralTone?NeutralToneMapping(color/max(alpha,.0001)):ACESFilmicToneMapping(color/max(alpha,.0001));
         color=sRGBTransferOETF(vec4(color,1.)).rgb;
         vec3 image=texture2D(backdrop,(vUv-.5)*crop+.5).rgb;
         gl_FragColor=vec4(mix(image,color,alpha),1.);
@@ -79,6 +80,7 @@ export async function createRenderPipeline(renderer, scene, camera) {
   composite.material.toneMapped = false;
   composer.addPass(composite);
   return {
+    setNeutralTone(enabled) { composite.uniforms.neutralTone.value = enabled; },
     setTissueOcclusion(enabled) {
       tissueOcclusion = enabled;
       composite.uniforms.tissueOcclusion.value = enabled;

@@ -4,7 +4,7 @@ import { mkdir, writeFile, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 const base = process.env.PREVIEW_URL || "http://127.0.0.1:5173/";
-const url = new URL("./lab.html?specimen=frog", base).href;
+const url = new URL(`./lab.html?specimen=frog${process.env.FROG_APPEARANCE === "blue" ? "&appearance=blue" : ""}`, base).href;
 const chrome =
   process.env.CHROME_PATH ||
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -225,8 +225,8 @@ try {
   await page.waitForTimeout(1500);
   let state = await debug();
   assert.equal(state.physicsBodies, 7);
-  for (const [id, pos] of Object.entries(state.positions))
-    assert(pos[1] > -0.06, `${id} stays on the physical bench`);
+  for (const [id, bounds] of Object.entries(state.geometryBounds))
+    assert(bounds.min[1] > -0.007, `${id} geometry stays on the physical bench`);
   await tool("inspect");
   await page.screenshot({ path: "output/frog-dissected.png" });
   await page.locator("#scene").focus();

@@ -5,12 +5,14 @@ import { createPhysics } from "./physics.js";
 import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
+import { createLandingPresentation } from "./landing-presentation.js";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =
   new URLSearchParams(location.search).get("specimen") === "frog"
     ? "frog"
     : "onion";
+const appearance = new URLSearchParams(location.search).get("appearance") === "blue" ? "blue" : "natural";
 const paths = {
   inspect: "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
   scalpel: "m15 3 6 6-10 10-7 2 2-7L15 3Zm-9 11 5 5M14 5l5 5",
@@ -124,7 +126,7 @@ try {
     ),
     specimen =
       specimenId === "frog"
-        ? await (await import("./specimens/frog.js")).createFrog(bench.scene)
+        ? await (await import("./specimens/frog.js")).createFrog(bench.scene, { appearance })
         : await createOnion(bench.scene),
     physics = await createPhysics(),
     lab = new LabController(bench, specimen, physics);
@@ -355,6 +357,10 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
+  // Build final-pose colliders while loading, avoiding a hull-generation hitch
+  // at the instant scroll releases the specimen to interactive physics.
+  physics.syncSpecimen(specimen, lab.states);
+  const presentation = await createLandingPresentation(bench, specimen);
   let last = performance.now(),
     accumulator = 0,
     frames = [],
@@ -364,14 +370,18 @@ try {
     const elapsed = (now - last) / 1000;
     const dt = Math.min(0.05, elapsed);
     last = now;
-    if (document.hidden) return;
-    accumulator += dt;
-    while (accumulator >= 1 / 60) {
-      physics.step();
-      accumulator -= 1 / 60;
+    if (document.hidden || presentation.paused) return;
+    if (presentation.locked && readyFrames >= 3 && !presentation.needsRender) return;
+    if (!presentation.locked) {
+      accumulator += dt;
+      while (accumulator >= 1 / 60) {
+        physics.step();
+        accumulator -= 1 / 60;
+      }
+      lab.update(dt);
+      bench.controls.update();
     }
-    lab.update(dt);
-    bench.controls.update();
+    presentation.update();
     bench.render(dt);
     frames.push(elapsed);
     if (lab.held || lab.cutting) {
@@ -382,11 +392,15 @@ try {
     if (++readyFrames === 3) {
       $("loading").classList.add("is-hidden");
       document.documentElement.dataset.ready = "true";
+      presentation.ready();
     }
   });
   window.__scalpless = {
     getDebug: () => ({
       ...lab.getDebug(),
+      presentation: presentation.getDebug(),
+      appearance: specimen.appearance ?? "natural",
+      geometryBounds: specimen.getBounds?.(),
       fps: frames.length / frames.reduce((a, b) => a + b, 0),
       manipulationFps: manipulationFrames.length
         ? manipulationFrames.length /
@@ -410,6 +424,7 @@ try {
   };
 } catch (error) {
   console.error(error);
+  if (parent !== window) parent.postMessage({type:"scalpless:lab-error"}, location.origin);
   $("loading").innerHTML =
     `<button class="icon-button" aria-label="The 3D bench could not start. Reload the page.">${icon("alert")}</button><span class="sr-only">The 3D bench could not start. Reload this page in a browser with WebGL enabled.</span>`;
   $("loading").querySelector("button").onclick = () => location.reload();
