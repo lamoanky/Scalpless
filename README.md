@@ -97,6 +97,12 @@ The slide is a read-only clone rendered through the existing WebGL renderer; it 
 
 The four-arrow button beside the tissue actions expands native movement controls. These start collapsed on smaller screens; the existing movement and rotation keyboard shortcuts remain available. Every button retains a 48 px target and visible keyboard focus.
 
+### Clear liquid-glass interface
+
+The toolbar, specimen controls and panels use the original shader from [dashersw/liquid-glass-js](https://github.com/dashersw/liquid-glass-js), pinned to revision `78cb6ccb0b9987bb60a88b14ccbd13a9e6e8ab2a`. Its fragment shader is extracted unchanged from the vendored source. Clear neutral tint, rounded/pill surfaces and live refraction replace the opaque blue treatment. The organ study retains the reference's spaced, uppercase Orbitron lettering, bundled locally with its font license.
+
+An adapter feeds only the rendered lab scene into the shader using the existing Three.js renderer. It does not snapshot the page, camera preview or API-key fields. The glass uses CSS-resolution targets, matching the library's canvas density; the specimen, native UI text and organ study keep full display resolution. There is no additional WebGL context or animation loop. Native buttons, focus, shortcuts, input ownership and dissection state stay in their existing modules. The upstream MIT license is included with the source and in the built site's `licenses/` directory.
+
 The descriptions are concise classroom summaries, checked against the [NWTC frog laboratory manual](https://bio.libretexts.org/Courses/Northeast_Wisconsin_Technical_College/General_Biology_Laboratory_Manual/Laboratory_14%3A_Vertebrates/14.02%3A_Amphibian_%28Frog%29_Dissection). The model remains a simplified educational illustration.
 
 ## Gemini teaching chat
@@ -159,6 +165,7 @@ npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
 npm run test:study        # independent organ view, undo/reset and narrow layouts
+npm run test:glass        # original glass shader, resize, Retina/mobile and controls
 npm run test:teaching     # mock Gemini replies, no-key/errors, input isolation and mobile
 npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
 FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks

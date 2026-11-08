@@ -9,6 +9,7 @@ import { installHandTracking } from "./hand-tracking.js";
 import { createLandingPresentation } from "./landing-presentation.js";
 import { installOrganSlide } from "./organ-slide.js";
 import { installTeachingChat } from "./teaching-chat.js";
+import { installLiquidGlass } from "./liquid-glass.js";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =
@@ -176,6 +177,7 @@ try {
   const teachingChat = installTeachingChat(lab, bench, {
     onToggle: open => organSlide.setSuspended(open || cameraPanelOpen()),
   });
+  const liquidGlass = installLiquidGlass(bench);
   // Observe setup-panel visibility without touching the camera/gesture adapter.
   if (cameraPanel) new MutationObserver(() => {
     if (cameraPanelOpen()) teachingChat.close();
@@ -410,6 +412,7 @@ try {
     }
     presentation.update();
     bench.render(dt);
+    liquidGlass.render();
     organSlide.render();
     frames.push(elapsed);
     if (lab.held || lab.cutting) {
@@ -440,6 +443,7 @@ try {
           manipulationFrames.reduce((a, b) => a + b, 0)
         : null,
       physicsBodies: physics.bodies.size,
+      glass: liquidGlass.getDebug(),
       physicalPieces: Object.fromEntries(
         [...physics.bodies].map(([id, { body }]) => [
           id,

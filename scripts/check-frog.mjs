@@ -270,9 +270,12 @@ try {
     await page.getByRole("link", { name: "Open onion dissection" }).isVisible(),
   );
   await page.screenshot({ path: "output/frog-mobile.png" });
-  await page.getByRole("link", { name: "Open onion dissection" }).click();
+  await Promise.all([
+    page.waitForURL(/specimen=onion/),
+    page.getByRole("link", { name: "Open onion dissection" }).click(),
+  ]);
   await page.waitForFunction(
-    () => document.documentElement.dataset.ready === "true",
+    () => document.documentElement.dataset.ready === "true" && window.__scalpless?.getDebug().state.specimen === "onion",
   );
   assert.equal(
     (await debug()).state.specimen,
@@ -296,7 +299,7 @@ try {
   console.log("Frog checks passed", JSON.stringify(report));
 } catch (error) {
   if (!page.isClosed()) {
-    await writeFile("output/frog-failure.json", JSON.stringify(await debug(), null, 2));
+    await writeFile("output/frog-failure.json", JSON.stringify({error:String(error),errors,url:page.url(),debug:await debug().catch(()=>null)}, null, 2));
     await page.screenshot({ path: "output/frog-failure.png" });
   }
   throw error;

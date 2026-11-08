@@ -1,0 +1,93 @@
+@font-face {
+  font-family:Orbitron;
+  src:url("/fonts/orbitron-variable.ttf") format("truetype");
+  font-style:normal;
+  font-weight:400 900;
+  font-display:swap;
+}
+
+/* Clear glass: the original liquid-glass-js rounded/pill shader supplies the
+   refraction. Native controls and readable content remain above that surface. */
+#bench .liquid-glass {
+  border: 0;
+  background: transparent;
+  box-shadow: 0 12px 30px #20395615, inset 0 1px 0 #ffffffaa;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #25415f;
+  isolation: isolate;
+}
+.liquid-glass::before {
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  border-radius:inherit;
+  background:linear-gradient(135deg,#ffffff45,#ffffff12);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+.glass-live .liquid-glass::before { background:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+.liquid-glass > .glass-frame {
+  position:absolute; inset:0; width:100%; height:100%; pointer-events:none;
+  overflow:visible; z-index:5; stroke:#ffffffa8; stroke-width:1;
+}
+#bench .liquid-glass .icon-button,
+#bench .liquid-glass .tool-button { color:#294c6c; }
+#bench .liquid-glass button:hover:not(:disabled) { background:#ffffff4d; }
+#bench .liquid-glass button[aria-pressed="true"],
+#bench .liquid-glass button[aria-expanded="true"],
+#bench .liquid-glass a[aria-current="page"] {
+  background:linear-gradient(145deg,#ffffff95,#d9f2ff40);
+  border-color:#ffffffba;
+  box-shadow:inset 0 1px 4px #ffffff9c,0 2px 8px #476b8f20;
+  color:#164563;
+}
+#bench .liquid-glass :focus-visible { outline:2px solid #23618b; outline-offset:-3px; }
+.tool-strip { padding:0; gap:10px; background:none; border:0; box-shadow:none; backdrop-filter:none; }
+.tool-strip > .divider { display:none; }
+.tool-group { position:relative; padding:8px; gap:6px; border-radius:40px; }
+.tool-group > button { width:48px; height:48px; flex-basis:48px; }
+.tool-group > button svg { width:26px; height:26px; }
+.specimen-switcher a { color:#294c6c; }
+.organ-slide { border-radius:28px; }
+.organ-slide .slide-heading,.organ-slide .slide-copy { background:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+#bench .organ-slide { width:340px; font-family:Orbitron,Inter,sans-serif; text-transform:uppercase; }
+.organ-slide .slide-heading { padding:16px 10px 14px 20px; }
+.organ-slide .slide-heading h2 { font-size:24px; font-weight:650; letter-spacing:.15em; margin-top:7px; line-height:1.35; }
+.organ-slide .panel-eyebrow { font-size:10px; font-weight:750; letter-spacing:.19em; color:#43647e; }
+.organ-slide .slide-preview { height:158px; margin:0 18px; }
+.organ-slide .slide-etch { inset:0; border:0; }
+.slide-etch svg { position:absolute; width:100%; height:100%; overflow:visible; }
+.slide-etch .preview-rim { fill:none; stroke:#ffffffc5; stroke-width:1; vector-effect:non-scaling-stroke; }
+.slide-etch .preview-corners { fill:none; stroke:#527e9d80; stroke-width:1.2; vector-effect:non-scaling-stroke; }
+.organ-slide .slide-etch::before,.organ-slide .slide-etch::after { display:none; }
+.organ-slide .slide-copy { padding:18px 20px 20px; font-size:10.5px; font-weight:650; line-height:1.95; letter-spacing:.09em; }
+.organ-slide .slide-system { font-size:13px; font-weight:700; letter-spacing:.15em; color:#315b7c; margin-bottom:14px; }
+.organ-slide .slide-note { color:#3d5c76; }
+.organ-slide .slide-observe { display:none; }
+.organ-slide .slide-note { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); padding:0; border:0; }
+#bench .teaching-panel { border-radius:26px; }
+.teaching-panel .teaching-composer { background:#ffffff25; }
+.teaching-panel .teaching-message { background:#ffffff58; border-color:#ffffff85; }
+.teaching-panel .teaching-message.user { background:#e9f7ff66; }
+.teaching-panel .question-idea,.teaching-panel .panel-button.quiet { background:#ffffff50; }
+.teaching-panel .question-entry,.teaching-panel .teaching-connect input,
+.teaching-panel .teaching-connect select { background:#ffffffb5; }
+@media(max-width:1100px) {
+  #bench .organ-slide { width:304px; }
+  .organ-slide .slide-preview { height:144px; }
+}
+@media(max-width:700px) {
+  #bench .organ-slide { width:auto; border-radius:24px; }
+  .organ-slide .slide-heading { padding:8px 8px 8px 14px; }
+  .organ-slide .slide-heading h2 { font-size:18px; }
+  .organ-slide .panel-eyebrow { font-size:8px; }
+  .organ-slide .slide-preview { height:136px; min-height:0; margin:0 0 14px 12px; }
+  .organ-slide .slide-copy { padding:4px 14px 14px; font-size:10px; letter-spacing:.025em; line-height:1.7; }
+  .organ-slide .slide-system { font-size:10px; letter-spacing:.06em; }
+}
+@media(max-width:560px) {
+  .tool-strip { gap:8px; padding:0; }
+  .tool-group { padding:5px; gap:3px; }
+}
+@media(max-height:600px) {
+  #bench .organ-slide { max-height:calc(100dvh - 96px); overflow:auto; }
+  .organ-slide .slide-preview { height:100px; }
+}
