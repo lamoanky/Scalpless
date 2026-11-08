@@ -6,6 +6,7 @@ import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
 import {installGestureCamera} from './gesture-camera.js';
 import { installMicroscope, microscopeIcon } from "./microscope.js";
+import { installLesson } from "./lesson.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -34,17 +35,19 @@ const paths = {
   membrane: "m4 6 12-3 5 15-12 3L4 6Zm1 5 12-3M7 16l12-3M9 5l5 15",
   alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
   reset: "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 6M4 12l1 6a8 8 0 0 0 14-2",
+  lesson: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 14a2 2 0 0 1 2-2h13M8 7h7M8 11h5",
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
 $("tools").innerHTML = `<div class="tool-group">${[
   ["inspect", "Inspect (V)"], ["scalpel", "Scalpel (S)"], ["hand", "Forceps (H)"],
 ].map(([id, label]) => `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === 'inspect'}">${icon(id)}</button>`).join("")}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
+  ["lesson-toggle", "lesson", "Guided lesson"],
   ["camera-angles", "camera", "Camera controls"],
   ["hints", "hints", "Show incision and grasp hints"],
   ["undo", "undo", "Undo last operation (⌘/Ctrl Z)"],
   ["reset", "reset", "Reset bench (R)"],
-].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}" ${id === 'hints' ? 'aria-pressed="false"' : ''}>${icon(i)}</button>`).join("")}</div>`;
+].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}" ${id === 'hints' || id === 'lesson-toggle' ? 'aria-pressed="false"' : ''}>${icon(i)}</button>`).join("")}</div>`;
 const cameraPad = document.createElement("div");
 cameraPad.className = "camera-pad";
 cameraPad.hidden = true;
@@ -234,6 +237,14 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
+  installLesson({
+    lab,
+    toggle: $("lesson-toggle"),
+    announce: (text) => { $("status").textContent = text; },
+    restart: () => $("reset").click(),
+    inputMode: () => bench.host.dataset.input ?? "mouse",
+    inputHost: bench.host,
+  });
   let last = performance.now(),
     accumulator = 0,
     frames = [],

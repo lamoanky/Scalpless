@@ -72,6 +72,14 @@ export class LabController {
       part.group.position.distanceTo(this.onion.origin) > 0.025
     );
   }
+  // The membrane waits on the inner face of the peeled layer 1 until pulled free.
+  get epidermisReady() {
+    return (
+      this.cutOpen &&
+      this.states["layer-1"].detached &&
+      !this.states.epidermis.detached
+    );
+  }
   available() {
     if (!this.cutOpen) return [];
     const result = [this.onion.parts.get("section")];
@@ -206,11 +214,22 @@ export class LabController {
   }
   grabContact(detail){
     const hit=this.pick(detail);
-    if(detail.source!=='webcam')return hit;
+    if(detail.source!=='webcam'){
+      // The pulsing ring is itself a grab target, even if the membrane is hidden
+      // under its layer or the ray lands on something behind it.
+      if(this.epidermisReady&&this.available().some(p=>p.id==='epidermis')){
+        const part=this.onion.parts.get('epidermis'),point=this.graspPoint(part),p=this.project(point);
+        if(Math.hypot((p.x-detail.x)*this.bench.host.clientWidth,(p.y-detail.y)*this.bench.host.clientHeight)<45)
+          return {part,point,normal:new THREE.Vector3(0,1,0),assisted:true};
+      }
+      return hit;
+    }
     let closest=null,best=40;
     for(const part of this.available()){
       const point=this.graspPoint(part),p=this.project(point);
-      const distance=Math.hypot((p.x-detail.x)*this.bench.host.clientWidth,(p.y-detail.y)*this.bench.host.clientHeight);
+      let distance=Math.hypot((p.x-detail.x)*this.bench.host.clientWidth,(p.y-detail.y)*this.bench.host.clientHeight);
+      // A pinch anywhere near the membrane should catch it, not its carrier layer.
+      if(part.id==='epidermis'&&this.epidermisReady)distance*=.4;
       if(distance<best){best=distance;closest={part,point,normal:new THREE.Vector3(0,1,0),assisted:true};}
     }
     return closest||hit;
@@ -358,7 +377,7 @@ export class LabController {
       p = mesh.geometry.attributes.position;
     const index =
       part.id === "epidermis"
-        ? Math.min(p.count - 1, Math.floor(p.count * 0.75))
+        ? 10 * 15 + 7 // centre of the 15×21 membrane grid: easiest to see and reach
         : Math.min(p.count - 1, Math.floor(42 * 0.74) * 49 + 48);
     return new THREE.Vector3()
       .fromBufferAttribute(p, index)
@@ -370,8 +389,13 @@ export class LabController {
       this.emit("Use the scalpel to open the supported seam first.");
       return;
     }
-    const hit = forcedId ? null : this.grabContact(detail),
+    let hit = forcedId ? null : this.grabContact(detail),
       id = forcedId ?? hit?.part.id;
+    // While the membrane is still attached, grabbing its carrier peels the membrane.
+    if (!forcedId && this.epidermisReady && (id === "layer-1" || id === "epidermis")) {
+      id = "epidermis";
+      hit = null;
+    }
     const part = this.available().find((p) => p.id === id);
     if (!part) {
       this.emit(
@@ -459,7 +483,8 @@ export class LabController {
       held.axis = delta.clone().normalize();
     if (held.axis) {
       const progress = THREE.MathUtils.clamp(
-        held.startBend + delta.dot(held.axis) / 0.072,
+        held.startBend +
+          delta.dot(held.axis) / (held.id === "epidermis" ? 0.03 : 0.072),
         0,
         1,
       );
@@ -563,6 +588,9 @@ export class LabController {
     const held = this.held;
     if (!held) return;
     const state = this.states[held.id];
+    // The membrane is fragile and short; most of the way off counts as off.
+    if (held.id === "epidermis" && !state.detached && state.separation >= 0.6)
+      this.peel(held.part, 1, new THREE.Vector3(...state.direction));
     if (state.detached) this.physics.release(held.id);
     else this.settling.set(held.id, state.separation * 0.45);
     this.held = null;
@@ -570,7 +598,8 @@ export class LabController {
     this.bench.host.classList.remove("is-holding");
     this.bench.restTools();
     this.history.push(this.operationBefore);
-    if (held.id === "section" && this.sectionMoved)
+    if (held.id === "layer-1" && this.epidermisReady) this.selected = "epidermis";
+    else if (held.id === "section" && this.sectionMoved)
       this.selected =
         this.available().find((p) => !this.states[p.id].detached)?.id ??
         "section";
@@ -705,19 +734,34 @@ export class LabController {
         this.cutting ||
         (this.tool === "scalpel" && Boolean(this.hover)));
     const available = this.available(),
+      membraneNext = this.epidermisReady && this.tool === "hand" && !this.held,
+      hovered =
+        this.hover && available.includes(this.hover.part) ? this.hover.part : null,
       part =
-        this.hover && available.includes(this.hover.part)
-          ? this.hover.part
-          : available.find((p) => p.id === this.selected);
+        membraneNext && (!hovered || hovered.id === "layer-1")
+          ? this.onion.parts.get("epidermis")
+          : hovered ?? available.find((p) => p.id === this.selected);
     const marker = this.onion.graspMarker;
     marker.visible =
       this.tool === "hand" &&
       !this.held &&
       Boolean(part) &&
-      (this.hints || Boolean(this.hover));
+      (this.hints || Boolean(this.hover) || membraneNext);
+    this.markerTime = (this.markerTime ?? 0) + dt;
     if (marker.visible) {
       marker.position.copy(this.graspPoint(part));
       marker.lookAt(this.bench.camera.position);
+      // The membrane is hard to spot, so its grip point pulses larger and warmer.
+      const pulse = part.id === "epidermis" ? 1.8 + Math.sin(this.markerTime * 5) * 0.5 : 1;
+      marker.scale.setScalar(pulse);
+      marker.material.color.set(part.id === "epidermis" ? "#ffb347" : "#86c9d8");
+    }
+    // Tint the membrane itself so it reads against the pale flesh beneath it.
+    const membrane = this.onion.parts.get("epidermis").meshes[0].material;
+    const glow = membraneNext ? 0.22 + Math.sin(this.markerTime * 5) * 0.1 : 0;
+    if (membrane.emissiveIntensity !== glow) {
+      membrane.emissive.set("#ff9a3c");
+      membrane.emissiveIntensity = glow;
     }
   }
   project(point) {

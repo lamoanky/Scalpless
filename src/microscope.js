@@ -276,6 +276,7 @@ export function installMicroscope() {
       dialog.querySelector(".microscope-caption").textContent = state.tissue.caption;
       draw();
       if (!dialog.open) dialog.showModal();
+      window.dispatchEvent(new CustomEvent("microscope:open", { detail: { id } }));
     },
     close: () => dialog.close(),
     get isOpen() { return dialog.open; },
