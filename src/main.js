@@ -7,6 +7,7 @@ import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
 import { createLandingPresentation } from "./landing-presentation.js";
 import { installOrganSlide } from "./organ-slide.js";
+import { installTeachingChat } from "./teaching-chat.js";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =
@@ -169,6 +170,15 @@ try {
   const input = installInput(lab, bench);
   const handTracking = installHandTracking(bench, input);
   const organSlide = installOrganSlide(lab, bench);
+  const cameraPanel = $("hand-tracking-panel");
+  const teachingChat = installTeachingChat(lab, bench, {
+    onToggle: open => organSlide.setSuspended(open || !cameraPanel.hidden),
+  });
+  // Observe setup-panel visibility without touching the camera/gesture adapter.
+  new MutationObserver(() => {
+    if (!cameraPanel.hidden) teachingChat.close();
+    organSlide.setSuspended(teachingChat.isOpen || !cameraPanel.hidden);
+  }).observe(cameraPanel, {attributes:true, attributeFilter:["hidden"]});
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {
       closeMenus();

@@ -19,6 +19,8 @@
     "test:tracking": "node scripts/check-hand-tracking.mjs",
     "test:frog": "node scripts/check-frog.mjs",
     "test:study": "node scripts/check-organ-study.mjs",
+    "test:teaching": "node scripts/check-teaching.mjs",
+    "tutor": "node --env-file-if-exists=.env.local server/tutor.mjs",
     "capture:frog": "node scripts/check-frog.mjs --record"
   },
   "dependencies": {

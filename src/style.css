@@ -311,6 +311,8 @@ button:disabled {
   }
 }
 @media (max-width: 560px) {
+  .specimen-switcher { top:12px; left:12px; padding:4px; gap:2px; }
+  .icon-button.anatomy-toggle { top:16px; left:130px; }
   .controls-area {
     left: 12px;
     right: 12px;
