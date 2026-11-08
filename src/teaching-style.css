@@ -106,8 +106,6 @@
 }
 #bench .teaching-panel .question-entry .icon-button:hover { filter:brightness(1.1); }
 #bench .teaching-panel .question-entry .icon-button svg { width:27px; height:27px; stroke-width:1.7; filter:drop-shadow(0 1px 1px #7cd9ff); }
-#bench .teaching-panel .teaching-foot { min-height:46px; padding:3px 2px 0; }
-#bench .teaching-panel .teaching-foot button { font-size:10.5px; font-weight:650; letter-spacing:.2em; color:#4a77a4; }
 #bench .teaching-panel .teaching-status { padding:0 4px; color:#416d98; }
 #bench .teaching-panel .teaching-message {
   border-radius:20px; border:1px solid #e4faffb8;
@@ -130,8 +128,6 @@
   #bench .teaching-panel .question-entry { min-height:64px; padding:5px; gap:5px; border-radius:22px; }
   #bench .teaching-panel .question-entry textarea { padding:10px; font-size:9px; min-height:52px; height:52px; }
   #bench .teaching-panel .question-entry .icon-button { width:48px; height:48px; flex-basis:48px; }
-  #bench .teaching-panel .teaching-foot { min-height:48px; padding:0; }
-  #bench .teaching-panel .teaching-foot button { font-size:9px; }
   #bench.has-teaching-chat .organ-slide, #bench.has-teaching-chat .study-launch { right:12px; }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -149,5 +145,4 @@
   #bench .teaching-panel .question-entry { min-height:58px; padding:4px; }
   #bench .teaching-panel .question-entry textarea { height:48px; min-height:48px; padding:10px; }
   #bench .teaching-panel .question-entry .icon-button { width:48px; height:48px; flex-basis:48px; }
-  #bench .teaching-panel .teaching-foot { padding-top:0; }
 }

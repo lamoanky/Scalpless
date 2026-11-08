@@ -29,7 +29,7 @@ await mkdir("output",{recursive:true});
 try {
   await page.goto(`${base}lab.html?specimen=frog`);await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
   assert.equal(calls.length,0);await chat();
-  assert.equal(await page.locator("#teaching-settings, #teaching-key, #teaching-mode, #teaching-model").count(),0);
+  assert.equal(await page.locator("#teaching-settings, #teaching-key, #teaching-mode, #teaching-model, #teaching-clear").count(),0);
   await page.locator("#teaching-panel").screenshot({path:"output/teaching-reference-panel.png"});
   await page.locator(".teaching-suggestions summary").click();
   await page.locator(".question-idea").first().click();assert.equal(calls.length,0,"Opening chat and choosing a suggestion never send a request");
@@ -44,7 +44,6 @@ try {
   assert.deepEqual(Object.keys(calls[0].body),["question","history","context"]);
   assert.deepEqual(await state(),intact);
   await page.screenshot({path:"output/teaching-server-ready.png"});
-  await page.locator("#teaching-clear").click();assert.equal(await page.locator(".teaching-message").count(),0);
   await page.locator("#teaching-close").click();
   await page.locator('[data-tool="scalpel"]').click();await page.locator("#primary-action").click();
   await page.waitForFunction(()=>window.__scalpless.getDebug().state.cutOpen);
@@ -70,13 +69,13 @@ try {
   await question.press("Escape");assert(!await page.locator("#teaching-panel").isVisible());
   assert.deepEqual(await state(),held,"Escape closes chat without cancelling the held organ");
   await chat();await submit("What does this organ do?");await answered();
-  assert.equal(calls.at(-1).body.context.held,"Liver");assert.equal(calls.at(-1).body.history.length,2);
+  assert.equal(calls.at(-1).body.context.held,"Liver");assert.equal(calls.at(-1).body.history.length,4);
   assert.equal(calls.at(-1).body.context.study,"Liver");
   assert.deepEqual(await state(),held);
   await page.screenshot({path:"output/teaching-answer.png"});
   await page.locator("#teaching-share").uncheck();reply='<img src="x" onerror="window.bad=true"> This is plain text.';
   await submit("How is that different from the stomach?");await answered();
-  assert.equal(calls.at(-1).body.history.length,4);assert.equal(calls.at(-1).body.context,null);
+  assert.equal(calls.at(-1).body.history.length,6);assert.equal(calls.at(-1).body.context,null);
   assert.equal(await page.locator("#teaching-messages img").count(),0,"Model output is text, never executable markup");
   status=503;await submit("Help me understand");
   await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("not configured"));

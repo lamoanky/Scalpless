@@ -27,7 +27,6 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
       <label class="sr-only" for="teaching-question">Your biology question</label>
       <div class="question-entry"><textarea id="teaching-question" rows="2" maxlength="${QUESTION_LIMIT}" placeholder="Ask a biology question…"></textarea><button class="icon-button" id="teaching-send" type="submit" aria-label="Send question">${icon("M12 20V4m-6 6 6-6 6 6")}</button><button class="icon-button" id="teaching-stop" type="button" aria-label="Stop answer" hidden>${icon("M6 6h12v12H6z")}</button></div>
       <p id="teaching-status" class="teaching-status" role="status" aria-live="polite"></p>
-      <div class="teaching-foot"><button type="button" id="teaching-clear" aria-label="Clear conversation">Clear</button></div>
     </form>`;
   root.append(launcher,panel);
   const $=id=>panel.querySelector(`#${id}`);
@@ -70,10 +69,6 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
   $("teaching-question").addEventListener("keydown",event=>{
     if(event.key==="Enter"&&!event.shiftKey&&!event.isComposing){event.preventDefault();if(!pending)$("teaching-ask").requestSubmit();}
   });
-  $("teaching-clear").onclick=()=>{
-    stop();history=[];explanations.clear();$("teaching-messages").replaceChildren();$("teaching-question").value="";
-    setStatus("Conversation cleared from this tab.");$("teaching-question").focus();
-  };
   $("teaching-stop").onclick=()=>{stop();$("teaching-question").focus();};
   $("teaching-share").onchange=()=>updateContext(state);
   panel.querySelectorAll("[data-question]").forEach(button=>button.onclick=()=>{

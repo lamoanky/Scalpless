@@ -79,8 +79,6 @@
 .question-entry .icon-button { color:white; background:#387eac; }
 .question-entry .icon-button:hover { background:#2d6795; }
 .teaching-status { margin:8px 2px 2px; min-height:16px; font-size:10px; line-height:1.5; color:#3f617d; }
-.teaching-foot { display:flex; align-items:center; gap:8px; font-size:9px; line-height:1.5; color:#5a7187; }
-.teaching-foot button { background:transparent; min-height:48px; min-width:48px; padding:4px; font-size:10px; color:#345e80; margin-left:auto; }
 @media (max-width:560px) {
   .teaching-launch { top:12px; right:72px; }
   .teaching-panel { top:76px; right:12px; width:calc(100vw - 24px); max-height:calc(100dvh - 92px); border-radius:20px; }

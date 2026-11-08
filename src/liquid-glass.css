@@ -72,7 +72,7 @@
 .teaching-panel .question-idea { font-size:10px; line-height:1.7; }
 .teaching-panel .question-entry textarea { font-size:11px; line-height:1.8; }
 .teaching-panel .message-label { font-weight:750; letter-spacing:.15em; }
-.teaching-panel .context-sharing, .teaching-panel .teaching-status, .teaching-panel .teaching-foot { font-weight:600; letter-spacing:.045em; line-height:1.7; }
+.teaching-panel .context-sharing, .teaching-panel .teaching-status { font-weight:600; letter-spacing:.045em; line-height:1.7; }
 .teaching-panel .teaching-composer { background:#ffffff25; }
 .teaching-panel .teaching-message { background:#ffffff58; border-color:#ffffff85; }
 .teaching-panel .teaching-message.user { background:#e9f7ff66; }
@@ -116,7 +116,6 @@
 #bench.has-teaching-chat .study-launch { right:380px; }
 .teaching-panel .teaching-heading { padding:4px 8px 4px 20px; }
 .teaching-panel .teaching-status:empty { display:none; }
-.teaching-panel .teaching-foot { justify-content:flex-end; }
 .teaching-panel.has-study .teaching-suggestions { display:none; }
 @media(max-width:760px) {
   #bench .teaching-panel { top:76px; right:12px; width:calc(100vw - 24px); max-height:calc(100dvh - 292px); }
