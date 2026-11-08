@@ -6,6 +6,12 @@ const files = {
   '/styles.css': ['styles.css', 'text/css'],
   '/app.js': ['app.js', 'text/javascript'],
   '/gestures.js': ['gestures.js', 'text/javascript'],
+  '/hands3d.js': ['hands3d.js', 'text/javascript'],
+  '/hand-pose.js': ['hand-pose.js', 'text/javascript'],
+  '/tracking-quality.js': ['tracking-quality.js', 'text/javascript'],
+  '/rigged-hand.js': ['rigged-hand.js', 'text/javascript'],
+  '/assets/left-hand.glb': ['assets/left-hand.glb', 'model/gltf-binary'],
+  '/assets/right-hand.glb': ['assets/right-hand.glb', 'model/gltf-binary'],
 };
 http.createServer(async (req, res) => {
   const file = files[new URL(req.url, 'http://localhost').pathname];

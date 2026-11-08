@@ -2,5 +2,11 @@
   "name": "scalpless-gesture-lab",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.js", "test": "node --test" }
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "three": "0.180.0"
+  }
 }
