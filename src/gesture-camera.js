@@ -59,7 +59,7 @@ export function installGestureCamera(bench,lab){
         if(feedback.textContent!==help)feedback.textContent=help;
       }else if(performance.now()-lastDetection>500){reset();}
       raf=requestAnimationFrame(loop);
-    }catch(error){stop(`Tracking stopped: ${error.message}. Mouse controls are available.`);console.error(error);}
+    }catch(error){stop(`Tracking stopped: ${error.message}. Mouse controls are available.`);feedback.closest('details').open=true;console.error(error);}
   }
   async function start(){
     if(running || starting)return;
@@ -89,6 +89,7 @@ export function installGestureCamera(bench,lab){
       if(id!==requestId)return;
       const message=error.name==='NotAllowedError'?'Camera access denied. Allow it in the browser and retry.':error.name==='NotFoundError'?'No webcam found. Connect a camera and retry.':error.message;
       stop(`${message} Mouse controls are available.`);
+      feedback.closest('details').open=true;
     }
   }
   function pointerWorld(pointer){

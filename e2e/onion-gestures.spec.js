@@ -83,6 +83,7 @@ test('camera denial preserves the onion bench and mouse controls',async({page})=
   await page.locator('#gesture-toggle').click();
   await expect(page.locator('#gesture-feedback')).toContainText('Camera access denied',{timeout:30000});
   await expect(page.locator('#gesture-toggle')).toHaveText('Enable webcam');
+  await expect(page.locator('#gesture-feedback')).toBeVisible();
   await page.locator('button[data-tool="scalpel"]').click();
   await expect(page.locator('button[data-tool="scalpel"]')).toHaveAttribute('aria-pressed','true');
   expect((await debug(page)).gestures.active).toBe(false);

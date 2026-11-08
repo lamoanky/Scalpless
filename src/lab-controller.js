@@ -706,7 +706,7 @@ export class LabController {
         ]),
       ),
       bounds: Object.fromEntries([...this.onion.parts].map(([id,part])=>{
-        const box=new THREE.Box3().setFromObject(part.group);
+        const box=new THREE.Box3().setFromObject(part.group,true);
         return [id,{min:box.min.toArray(),max:box.max.toArray()}];
       })),
       drawCalls: this.bench.renderer.info.render.calls,

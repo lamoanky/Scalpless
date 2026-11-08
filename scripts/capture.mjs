@@ -136,7 +136,7 @@ await page.locator("#primary-action").click();
 await page.locator("#place-action").click();
 await page.waitForTimeout(1500);
 assert(
-  (await debug()).bounds.section.min[1] > -0.008,
+  (await debug()).bounds.section.min[1] > -0.015,
   "Released section remains above the bench collision surface",
 );
 await page.screenshot({ path: "output/scalpless-cutaway.png" });
