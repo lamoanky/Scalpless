@@ -440,7 +440,7 @@ try {
   // Build final-pose colliders while loading, avoiding a hull-generation hitch
   // at the instant scroll releases the specimen to interactive physics.
   physics.syncSpecimen(specimen, lab.states);
-  const presentation = await createLandingPresentation(bench, specimen);
+  const presentation = await createLandingPresentation(bench, specimen, {glass:liquidGlass});
   let last = performance.now(),
     accumulator = 0,
     frames = [],
@@ -461,7 +461,7 @@ try {
       lab.update(dt);
       bench.controls.update();
     }
-    presentation.update();
+    presentation.update(dt);
     bench.render(dt);
     liquidGlass.render();
     organSlide.render();
