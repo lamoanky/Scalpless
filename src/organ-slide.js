@@ -60,12 +60,15 @@ export function installOrganSlide(lab, bench, {onOpen=()=>{}, onClear=()=>{}}={}
   const isVisible = () => !panel.hidden && getComputedStyle(panel).visibility !== "hidden";
   function visibility() {
     const show = Boolean(id) && !minimized && !suspended;
+    const wasHidden = panel.hidden;
     if (!show) drag = null;
     if (!show && panel.contains(document.activeElement)) bench.host.focus({preventScroll:true});
     panel.hidden = !show;
+    if (show && wasHidden) historyTrack.scrollLeft = entries.indexOf(id)*historyTrack.clientWidth;
     restore.hidden = !id || !minimized || suspended;
     restore.setAttribute("aria-expanded", String(show));
     document.getElementById("bench").classList.toggle("has-organ-study", show);
+    document.getElementById("bench").classList.toggle("has-minimized-study", Boolean(id) && minimized && !suspended);
     if (!show) presented = null;
     else if (presented !== id) { presented = id; onOpen(id); }
   }
@@ -134,6 +137,7 @@ export function installOrganSlide(lab, bench, {onOpen=()=>{}, onClear=()=>{}}={}
   historyTrack.addEventListener("scroll",()=>{
     clearTimeout(scrollTimer);
     scrollTimer=setTimeout(()=>{
+      if (panel.hidden || !historyTrack.clientWidth) return;
       const next=entries[Math.round(historyTrack.scrollLeft/Math.max(historyTrack.clientWidth,1))];
       if(next && next!==id)select(next,false);
     },100);

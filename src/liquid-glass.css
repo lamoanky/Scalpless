@@ -119,12 +119,14 @@
 .teaching-panel .teaching-foot { justify-content:flex-end; }
 .teaching-panel.has-study .teaching-suggestions { display:none; }
 @media(max-width:760px) {
+  #bench .teaching-panel { top:76px; right:12px; width:calc(100vw - 24px); max-height:calc(100dvh - 292px); }
   #bench .organ-slide, #bench.has-teaching-chat .organ-slide { top:76px; left:12px; right:12px; width:auto; }
   .organ-slide .study-label { font-size:18px; }
   .organ-slide .slide-preview { height:96px; margin:0 12px 8px; }
   .study-navigation { position:absolute; bottom:8px; left:12px; right:12px; pointer-events:none; }
   .study-navigation button { pointer-events:auto; background:#ffffff70; }
   #bench.has-organ-study .teaching-panel { top:calc(88px + var(--study-height, 156px)); max-height:calc(100dvh - 304px - var(--study-height, 156px)); }
+  #bench.has-minimized-study .teaching-panel { top:136px; max-height:calc(100dvh - 352px); }
   #bench.has-teaching-chat .study-launch { right:12px; }
   .teaching-panel .teaching-scroll { min-height:32px; }
   .teaching-panel .teaching-composer { padding:4px 12px; }

@@ -72,6 +72,11 @@ try {
     assert.equal((await debug()).state.pieces.heart.collected,true);
     const collection=await debug();
     assert.deepEqual(collection.organStudy.history,["liver","heart"]);
+    await page.locator('[aria-label="Minimize organ study"]').click();
+    await page.waitForTimeout(150);
+    assert.equal((await debug()).organStudy.visible,false,"A hidden scroller must not reopen a minimized study");
+    await page.getByRole("button",{name:"Open organ study",exact:true}).click();
+    assert.equal((await debug()).organStudy.id,"heart");
     await page.locator("#organ-slide").hover();await page.mouse.wheel(0,-300);
     await page.waitForFunction(()=>window.__scalpless.getDebug().organStudy.id==="liver");
     assert.deepEqual((await debug()).state,collection.state,"History scrolling is presentation only");
@@ -114,7 +119,10 @@ try {
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     const box=await page.locator("#organ-slide").boundingBox();assert(box.x>=0&&box.x+box.width<=width);
     await page.screenshot({path:`output/organ-study-mobile-${width}.png`});
+    await page.locator('[aria-label="Minimize organ study"]').click();
     await page.locator("#place-action").click();
+    assert.equal(await page.locator("#organ-slide").isVisible(),false,"Collection respects the minimized study");
+    await page.getByRole("button",{name:"Open organ study",exact:true}).click();
     assert.equal(await page.locator("#organ-slide").isVisible(),true);
     assert.equal((await debug()).visibility.liver,false);
   }

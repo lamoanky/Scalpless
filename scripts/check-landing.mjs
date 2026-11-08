@@ -8,7 +8,7 @@ await mkdir('output',{recursive:true});
 const errors=[];
 try {
   const page=await browser.newPage({viewport:{width:1600,height:1000},deviceScaleFactor:process.env.HIGH_RES?2:1});
-await mockTutor(page);
+  await mockTutor(page);
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   const ready=async()=>{await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');await page.waitForFunction(()=>window.__scalplessLanding.getDebug().labReady);};

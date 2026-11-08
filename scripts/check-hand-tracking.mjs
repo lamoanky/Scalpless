@@ -105,7 +105,7 @@ try {
     route.fulfill({ body: stub, contentType: "text/javascript" }),
   );
   const page = await context.newPage();
-await mockTutor(page);
+  await mockTutor(page);
   monitor(page);
   await ready(page);
   const debug = () => page.evaluate(() => window.__scalpless.getDebug());

@@ -31,7 +31,7 @@ const choose = async id => {
   await page.locator(`[data-piece="${id}"]`).click();
 };
 try {
-await mockTutor(page);
+  await mockTutor(page);
   await page.goto(`${process.env.PREVIEW_URL || "http://127.0.0.1:5173"}/lab.html?specimen=frog`);
   await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
   await page.waitForTimeout(1500);
