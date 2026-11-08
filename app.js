@@ -33,6 +33,7 @@ function loadHandScene() {
     handScene = await createHandScene($('hands-stage'));
     handScene.setAngle($('angle').checked);
     handScene.setCameraMode($('camera-mode').value);
+    handScene.setMotionSensitivity($('motion-sensitivity').value);
     $('hands-hint').hidden=$('input-source').value==='mouse';
     if($('tool-scalpel').getAttribute('aria-pressed')==='true')mouseTool('scalpel');
     $('hands-status').textContent = $('input-source').value==='mouse'?'Mouse controls ready':'Ready for hand tracking';
@@ -213,5 +214,9 @@ async function start() {
 $('toggle').addEventListener('click', () => running ? stop() : start());
 $('use-webcam').addEventListener('click',()=>{if(running){$('input-source').value='webcam';applyInputSource();}else start();});
 $('sensitivity').addEventListener('input', e => { tracker.sensitivity = Number(e.target.value); $('sensitivity-value').textContent = `${tracker.sensitivity.toFixed(2)}×`; });
+$('motion-sensitivity').addEventListener('input',event=>{
+  const value=Number(event.target.value);handScene?.setMotionSensitivity(value);
+  $('motion-sensitivity-value').textContent=`${value.toFixed(2)}×`;
+});
 document.addEventListener('visibilitychange', () => { if (document.hidden && running) stop(); });
 window.addEventListener('pagehide', () => { stop(); model?.close(); model = null; });

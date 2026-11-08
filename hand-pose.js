@@ -75,18 +75,20 @@ export function assignHands(landmarks, labels, previous = {}) {
 
 // Use the palm center instead of the wrist so a rotation doesn't sweep the hand
 // across the display. Preserve almost the full camera range with a small margin.
-export function handScreenPosition(image) {
+export function handScreenPosition(image,sensitivity=1) {
   const indices=[0,5,9,13,17];
   const center=indices.reduce((sum,i)=>({x:sum.x+image[i].x/5,y:sum.y+image[i].y/5}),{x:0,y:0});
   const bounded=n=>Math.max(0,Math.min(1,n));
-  return {x:.08+.84*(1-bounded(center.x)), y:.1+.8*bounded(center.y)};
+  const x=bounded(.5+(center.x-.5)*sensitivity),y=bounded(.5+(center.y-.5)*sensitivity);
+  return {x:.08+.84*(1-x), y:.1+.8*y};
 }
 
 // Looking upward requires a half-turn from the camera-facing coordinate frame:
 // negative camera depth points DOWN toward the lens, not up through the palm.
-export function projectTableHand(image,world,aspect=4/3,distanceScale=1) {
+export function projectTableHand(image,world,aspect=4/3,distanceScale=1,sensitivity=1) {
   const center=[0,5,9,13,17].reduce((s,i)=>({x:s.x+image[i].x/5,y:s.y+image[i].y/5}),{x:0,y:0});
-  const anchor={x:(.5-Math.max(0,Math.min(1,center.x)))*8,z:(Math.max(0,Math.min(1,center.y))-.5)*8,y:.15+3.4*(1/distanceScale-1)};
+  const gain=n=>Math.max(-.5,Math.min(.5,(n-.5)*sensitivity));
+  const anchor={x:-gain(center.x)*8,z:gain(center.y)*8,y:.15+3.4*sensitivity*(1/distanceScale-1)};
   const local=image.map((p,i)=>world?.[i] ? {x:-(world[i].x-world[0].x)*14,y:(world[i].z-world[0].z)*14,z:(world[i].y-world[0].y)*14} : {x:-(p.x-image[0].x)*6*aspect,y:(p.z-image[0].z)*6*aspect,z:(p.y-image[0].y)*6});
   const palm=[0,5,9,13,17].reduce((s,i)=>({x:s.x+local[i].x/5,y:s.y+local[i].y/5,z:s.z+local[i].z/5}),{x:0,y:0,z:0});
   return local.map(p=>({x:anchor.x+p.x-palm.x,y:anchor.y+p.y-palm.y,z:anchor.z+p.z-palm.z}));

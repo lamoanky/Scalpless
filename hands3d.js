@@ -80,6 +80,7 @@ export async function createHandScene(container) {
   const stabilizer=new PoseStabilizer();
   const distanceTracker=new HandDistanceScale();
   let cameraMode='flat';
+  let motionSensitivity=1.5;
   let angled=false;
   function updateView() {
     camera.position.set(angled?4:0,cameraMode==='flat'?8:5.8,cameraMode==='flat'?7.5:8.5);
@@ -101,10 +102,10 @@ export async function createHandScene(container) {
   const observer = new ResizeObserver(resize); observer.observe(container); resize();
   const ray=new THREE.Ray(),plane=new THREE.Plane();
   function screenMappedPose(image,world,aspect,label,distanceScale) {
-    if(cameraMode==='flat') return projectTableHand(image,world,aspect,distanceScale);
+    if(cameraMode==='flat') return projectTableHand(image,world,aspect,distanceScale,motionSensitivity);
     camera.updateMatrixWorld();
     const pose=projectHand(image,world,aspect,label);
-    const screen=handScreenPosition(image);
+    const screen=handScreenPosition(image,motionSensitivity);
     // Intersect a screen ray with a camera-facing plane. This keeps the travel
     // proportional to the display even when its aspect ratio or view changes.
     const direction=new THREE.Vector3(screen.x*2-1,1-screen.y*2,.5).unproject(camera).sub(camera.position).normalize();
@@ -165,6 +166,7 @@ export async function createHandScene(container) {
     renderer.render(scene, camera);
   });
   return {
+    setMotionSensitivity(value){motionSensitivity=THREE.MathUtils.clamp(Number(value)||1.5,.75,2.5);},
     setInputSource(source){mouse.cancel();sandbox.cancel();inputSource=source;mousePoint=null;this.clear();},
     setMouseTool(tool){return mouse.setTool(tool);},
     setMouseHeight(value){mouse.setHeight(value);},

@@ -2,6 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { projectHand, projectTableHand, rotateCameraResult, assignHands, handScreenPosition, PoseStabilizer, HandDistanceScale, apparentPalmSize, cursorHeight } from './hand-pose.js';
 const image = () => Array.from({ length: 21 }, (_, i) => ({ x: .4 + i * .005, y: .7 - i * .01, z: -i * .001 }));
+test('movement gain amplifies hand travel and height without stretching its fingers',()=>{
+  const base=image(),world=openPalm();
+  const moved=base.map(p=>({...p,x:p.x+.04,y:p.y-.04}));
+  const a=projectTableHand(base,world,4/3,1,1),b=projectTableHand(moved,world,4/3,1,1);
+  const fastA=projectTableHand(base,world,4/3,1,1.5),fastB=projectTableHand(moved,world,4/3,1,1.5);
+  assert.ok(Math.abs((fastB[0].x-fastA[0].x)/(b[0].x-a[0].x)-1.5)<1e-9);
+  assert.ok(Math.abs((fastB[0].z-fastA[0].z)/(b[0].z-a[0].z)-1.5)<1e-9);
+  const raised=projectTableHand(base,world,4/3,.9,1),fastRaised=projectTableHand(base,world,4/3,.9,1.5);
+  assert.ok(fastRaised[0].y>raised[0].y);
+  const length=p=>Math.hypot(p[8].x-p[5].x,p[8].y-p[5].y,p[8].z-p[5].z);
+  assert.ok(Math.abs(length(a)-length(fastA))<1e-9);
+});
 test('public cursor Z represents bounded vertical height above the table',()=>{
   assert.equal(cursorHeight(-1.1),0);
   assert.ok(Math.abs(cursorHeight(.5)-.5)<1e-9);
