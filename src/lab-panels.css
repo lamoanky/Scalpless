@@ -59,17 +59,6 @@
 .teaching-heading h2 { margin:5px 0 0; font-size:24px; font-weight:500; letter-spacing:-.045em; }
 .teaching-scroll { padding:0 20px; overflow:auto; overscroll-behavior:contain; min-height:40px; scrollbar-width:thin; }
 .teaching-intro { margin:0 0 14px; font-size:12px; line-height:1.6; color:#4c6680; }
-.teaching-settings { border-top:1px solid #a4bfd14d; border-bottom:1px solid #a4bfd14d; font-size:11px; }
-.teaching-settings summary { cursor:pointer; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:600; }
-.teaching-settings summary::before { content:"+"; font-size:17px; font-weight:400; }
-.teaching-settings[open] summary::before { content:"−"; }
-.teaching-settings summary span { margin-left:auto; color:#56728b; font-size:10px; font-weight:400; }
-.teaching-settings summary:focus-visible { outline:2px solid #087da9; outline-offset:-2px; border-radius:8px; }
-.teaching-connect { padding-bottom:14px; }
-.teaching-connect label { display:block; margin:9px 0 6px; font-size:11px; font-weight:550; }
-.teaching-connect select, .teaching-connect input { width:100%; min-height:48px; border:1px solid #aac6dd; border-radius:11px; background:#f6fbffbc; padding:10px; font-size:12px; }
-.connection-note { font-size:11px; line-height:1.55; color:#4d6881; margin:9px 0 12px; }
-.connection-actions { display:flex; gap:6px; margin-top:12px; }
 .panel-button, .question-idea { min-height:48px; padding:9px 12px; border-radius:13px; font-size:11px; background:#366f99; color:white; border:1px solid #ffffffa0; }
 .panel-button:hover { background:#295d87; }
 .panel-button.quiet { color:#3b5f7b; background:#f6fbff80; }

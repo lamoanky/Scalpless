@@ -82,7 +82,7 @@ The original gesture sandbox is preserved at `npm run gesture:sandbox` → http:
 - `src/landing-scene.js`, `src/landing-frog.js`: shared blue exterior, shoulder/hip posing, glass displays, procedural textures and reflected floor.
 - `src/landing-presentation.js`: validates parent messages, applies scroll presentation and releases input/physics after the final pose. Controller actions and camera controls remain unchanged after entry.
 - `src/organ-slide.js`, `src/organ-guide.js`: independent held/collected-organ study view and concise anatomy/context metadata.
-- `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: optional chat UI, session-only credentials/cancellation and bounded Gemini transport.
+- `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: chat UI, cancellable same-origin requests and bounded Gemini transport.
 - `server/tutor.mjs`: optional loopback teaching proxy; no client credentials or camera data are accepted.
 
 The specimen stays stationary during cutting. Attached tissue is deformed around its basal attachment with bounded displacement; separation progress is stored separately from its current bend. A detached shell retains its shape and becomes a rigid body. Collision geometry approximates its volume using smaller convex patches to preserve concavity. Held pieces follow constrained targets; release transfers them back to simulation with restrained motion.
@@ -101,7 +101,7 @@ The four-arrow button beside the tissue actions expands native movement controls
 
 ### Clear liquid-glass interface
 
-The toolbar, specimen controls and panels use the original shader from [dashersw/liquid-glass-js](https://github.com/dashersw/liquid-glass-js), pinned to revision `78cb6ccb0b9987bb60a88b14ccbd13a9e6e8ab2a`. Its fragment shader is extracted unchanged from the vendored source. Clear neutral tint, rounded/pill surfaces and live refraction replace the opaque blue treatment. The organ study retains the reference's spaced, uppercase Orbitron lettering, bundled locally with its font license.
+The toolbar, specimen controls and panels use the original shader from [dashersw/liquid-glass-js](https://github.com/dashersw/liquid-glass-js), pinned to revision `78cb6ccb0b9987bb60a88b14ccbd13a9e6e8ab2a`. Its fragment shader is extracted unchanged from the vendored source. Clear neutral tint, rounded/pill surfaces and live refraction replace the opaque blue treatment. The organ study and teaching chat share the reference's spaced, uppercase Orbitron lettering, bundled locally with its font license.
 
 An adapter feeds only the rendered lab scene into the shader using the existing Three.js renderer. It does not snapshot the page, camera preview or API-key fields. The glass uses CSS-resolution targets, matching the library's canvas density; the specimen, native UI text and organ study keep full display resolution. There is no additional WebGL context or animation loop. Native buttons, focus, shortcuts, input ownership and dissection state stay in their existing modules. The upstream MIT license is included with the source and in the built site's `licenses/` directory.
 
@@ -111,25 +111,19 @@ The descriptions are concise classroom summaries, checked against the [NWTC frog
 
 Use the speech-bubble button at the upper right. Ask a question and press **Send** (or Enter; Shift+Enter adds a line). Suggested questions only fill the composer; they do not send a request. The panel can explain anatomy, organ function and the current virtual lab step. It never operates the tools. Its answers are AI-generated and should be checked with a teacher.
 
-No question, lab state or credential is transmitted on startup, opening the panel, or saving connection settings. A request is sent only when you submit a question. The optional **Share current lab state** checkbox includes the specimen, tool, incision stage, held/selected tissue and available/removed part names. It excludes webcam images, landmarks, coordinates and identifying data. Up to six completed exchanges are sent for follow-up context; **Clear** removes the conversation from this tab. Turning off context sharing omits the current state, but previous answers may still mention earlier lab state. Clear the conversation to remove that history too.
+The chat automatically uses the same-origin server connection; there is no browser key entry or connection menu. No question or lab state is transmitted on startup or opening the panel. A request is sent only when you submit a question. The optional **Share current lab state** checkbox includes the specimen, tool, incision stage, held/selected tissue and available/removed part names. It excludes webcam images, landmarks, coordinates and identifying data. Up to six completed exchanges are sent for follow-up context; **Clear** removes the conversation from this tab. Turning off context sharing omits the current state, but previous answers may still mention earlier lab state. Clear the conversation to remove that history too.
 
-### Browser connection for personal development
+### Local server setup
 
-Open **Gemini connection**, enter your own key from [Google AI Studio](https://aistudio.google.com/api-keys), and choose **Use connection**. The key stays in a private JavaScript closure for the lifetime of this page. The password field is cleared after configuration; the key is not put in local/session storage, URLs, debug state, logs or the repository. **Forget key**, reloading, or switching specimen routes removes it. Closing the chat retains it for this page session.
-
-**A browser key is exposed to that browser and its developer tools.** When you submit a question, it travels in the `x-goog-api-key` header directly to Google's Gemini endpoint. Do not use a shared project key this way in a public app. Google recommends a backend proxy for production [API key security](https://ai.google.dev/gemini-api/docs/api-key). Restrict your key and check the account's quota and data terms in AI Studio.
-
-The default text model is `gemini-3.5-flash-lite`, listed in Google's [model catalog](https://ai.google.dev/gemini-api/docs/models) when implemented. You can change the model name in settings if your account uses another supported text model. The adapter uses the documented [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Model availability, quotas and account eligibility can change. No live-provider answer was validated without a real key; automated checks intercept the provider and test the actual request/response boundary.
-
-### Optional server connection
-
-This is the safer development option: the browser sends only questions/history/coarse context to `/api/tutor`, and the server holds the Gemini key. No new dependencies are required.
+The browser sends only questions/history/coarse context to `/api/tutor`. The Gemini key and model selection stay on the server. No new dependencies are required.
 
 1. Create **`.env.local` in the project root**, which Git ignores. Add `GEMINI_API_KEY=your-key` using your editor. Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
-2. Run `npm run tutor` in a second terminal. It listens only on `127.0.0.1:8787`; restart it after changing `.env.local`. Keep `npm run dev -- --port 5173` running for the app. Vite dev and preview forward `/api/tutor` to the local service; restart either if needed after configuration changes.
-3. In the chat's connection settings choose **Server connection · recommended**, then **Use connection**. Nothing is sent until you submit a question. The service's model comes from the server environment, not the browser model field.
+2. Run `npm run tutor` in a second terminal. It listens only on `127.0.0.1:8787`; restart it after changing `.env.local`. Keep `npm run dev -- --port 5173` running for the app. Vite dev and preview forward `/api/tutor` to the local service.
+3. Open the chat and ask a question. No connection selection or key entry is needed in the app. Nothing is sent until you submit.
 
-The local proxy accepts JSON POSTs from localhost/127.0.0.1 ports 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel, changing connection settings and **Clear** cancel a pending request and ignore late replies.
+The default text model is `gemini-3.5-flash-lite`; use `GEMINI_MODEL` on the server if your account requires another supported text model. Model availability, quotas and account eligibility can change. The server uses the [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Automated checks use mocked replies, not a live account.
+
+The local proxy accepts JSON POSTs from localhost/127.0.0.1 ports 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel and **Clear** cancel a pending request and ignore late replies.
 
 For deployment, supply an authenticated same-origin `/api/tutor` route with a server secret manager, per-user authorization/quotas and the appropriate origin policy. Do not publish this loopback development service as an unauthenticated public proxy. The production static build alone cannot provide that route.
 
@@ -169,7 +163,7 @@ npm run test:browser      # browser interaction and accessibility-size checks
 npm run test:study        # independent organ view, undo/reset and narrow layouts
 npm run test:glass        # original glass shader, resize, Retina/mobile and controls
 npm run test:frog-variants # exact blue/copper geometry and collider parity (Vite dev server)
-npm run test:teaching     # mock Gemini replies, no-key/errors, input isolation and mobile
+npm run test:teaching     # mock server replies, typography/errors, input isolation and mobile
 npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
 FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks
 npm run test:tracking     # camera lifecycle and gesture-driven onion workflow

@@ -70,12 +70,12 @@ export function generationRequest({question,history,context}, key = "") {
 
 export function modelName(value = DEFAULT_MODEL) {
   if(typeof value!=="string"||!/^gemini-[a-z0-9.-]{1,80}$/.test(value))
-    throw new TeachingError("model", "Enter a valid Gemini model name in connection settings.");
+    throw new TeachingError("model", "Configure a valid Gemini model name on the server.");
   return value;
 }
 
 export async function generateAnswer({apiKey,model=DEFAULT_MODEL,question,history,context,signal,fetchImpl=fetch}) {
-  if (!apiKey) throw new TeachingError("no-key", "Add a session key in Gemini connection settings, or use a configured server connection.");
+  if (!apiKey) throw new TeachingError("no-key", "Configure the Gemini key on the teaching server.");
   let response;
   try {
     response=await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${modelName(model)}:generateContent`,{
@@ -90,8 +90,8 @@ export async function generateAnswer({apiKey,model=DEFAULT_MODEL,question,histor
   }
   if (!response.ok) {
     const [code,message]=response.status===429 ? ["quota","Gemini is busy or the key has reached its quota. Wait a moment or check your Google AI Studio quota."]
-      : [400,401,403].includes(response.status) ? ["credentials","Gemini rejected this request. Check your key, model access and account restrictions in connection settings."]
-      : response.status===404 ? ["model","This Gemini model is unavailable. Update the model name in connection settings."]
+      : [400,401,403].includes(response.status) ? ["credentials","Gemini rejected this request. Check the server key, model access and account restrictions."]
+      : response.status===404 ? ["model","This Gemini model is unavailable. Update the model name on the server."]
       : ["unavailable","Gemini is temporarily unavailable. Try again in a moment."];
     // Never reflect raw provider errors: they may contain credentials or prompts.
     throw new TeachingError(code,message);
