@@ -138,7 +138,10 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     } finally {if(current===version)setPending(false);}
   };
   lab.subscribe(updateContext);updateContext(state);
-  addEventListener("pagehide",()=>{stop();session.forget();$("teaching-key").value="";});
+  addEventListener("pagehide",()=>{
+    stop();session.forget();$("teaching-key").value="";
+    $("connection-label").textContent=session.status().mode==="server"?"Server selected":"Not connected";
+  });
   return {
     close:()=>{if(!panel.hidden)open(false,{focus:false});},
     get isOpen(){return !panel.hidden;},

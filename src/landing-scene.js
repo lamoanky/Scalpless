@@ -72,7 +72,9 @@ export function createLandingScene(bench, specimen) {
     .replace('gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );',`vec2 screenUv=floorClip.xy/floorClip.w*.5+.5;
       vec3 sky=texture2D(skyMap,screenUv).rgb;
       float strength=.45*(1.-smoothstep(3.,15.,length(floorWorld.xz)));
-      gl_FragColor=vec4(mix(sky,base.rgb,strength),roomOpacity);`);
+      // Uncovered reflection texels are transparent; don't blend their black
+      // RGB into the sky when the main scene has a composited backdrop.
+      gl_FragColor=vec4(mix(sky,base.rgb/max(base.a,.001),strength*base.a),roomOpacity);`);
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=128;
   const sc=shadowCanvas.getContext('2d'),grad=sc.createRadialGradient(64,64,5,64,64,62);
   grad.addColorStop(0,'rgba(31,69,137,.3)');grad.addColorStop(.5,'rgba(45,84,150,.18)');grad.addColorStop(1,'rgba(45,84,150,0)');

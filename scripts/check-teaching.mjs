@@ -5,10 +5,11 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const page=await browser.newPage({viewport:{width:1440,height:960},reducedMotion:"reduce"});
 const base=process.env.PREVIEW_URL||"http://127.0.0.1:5173/";
 const key="test-browser-token-do-not-use", calls=[], errors=[];
-let reply="The liver produces bile and processes nutrients.", status=200, hold=false;
+let reply="The liver produces bile and processes nutrients.", status=200, hold=false, offline=false;
 page.on("pageerror",error=>errors.push(error.message));
 await page.route("https://generativelanguage.googleapis.com/**",async route=>{
   calls.push({url:route.request().url(),headers:route.request().headers(),body:route.request().postDataJSON()});
+  if(offline){await route.abort();return;}
   if(hold)await new Promise(resolve=>setTimeout(resolve,1000));
   await route.fulfill({status,contentType:"application/json",body:JSON.stringify(status===200?{candidates:[{finishReason:"STOP",content:{parts:[{text:reply}]}}]}:{error:{message:key}})}).catch(()=>{});
 });
@@ -39,6 +40,9 @@ try {
   const held=await state();
   await question.fill("r v s h q e");await question.press("ArrowLeft");await question.press("Control+z");
   assert.deepEqual(await state(),held,"Chat typing and editing cannot invoke lab shortcuts");
+  await question.press("Escape");assert(!await page.locator("#teaching-panel").isVisible());
+  assert.deepEqual(await state(),held,"Escape closes chat without cancelling the held organ");
+  await chat();
   await submit("What does this organ do?");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent==="Answer ready.");
   assert.equal(calls.length,1);assert.equal(calls[0].headers["x-goog-api-key"],key);assert(!calls[0].url.includes(key));
   assert.match(calls[0].body.contents.at(-1).parts[0].text,/"held":"Liver"/);
@@ -52,6 +56,9 @@ try {
   status=429;await submit("Explain again");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("quota"));
   assert(!await page.locator("body").innerText().then(text=>text.includes(key)));
   assert.equal(await question.inputValue(),"Explain again","Failures retain the question for retry");
+  offline=true;await submit("Network failure question");
+  await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("Could not reach"));
+  assert.deepEqual(await state(),held,"A network failure cannot change the lab");offline=false;
   status=200;hold=true;reply="Late answer must not appear";
   await submit("A delayed question");await page.locator("#teaching-stop").click();
   await page.waitForTimeout(1200);assert(!await page.locator("#teaching-messages").innerText().then(text=>text.includes(reply)));
@@ -75,6 +82,10 @@ try {
   await page.screenshot({path:"output/teaching-landscape.png"});
   await settings();await page.locator("#teaching-forget").click();
   await page.setViewportSize({width:390,height:844});
+  // Configure again before navigation so this tests actual credential lifetime,
+  // rather than merely navigating with an already-forgotten key.
+  await settings();await page.locator("#teaching-key").fill(key);
+  await page.getByRole("button",{name:"Use connection",exact:true}).click();
   await page.locator("#teaching-close").click();
   await page.getByRole("link",{name:"Open onion dissection"}).click();await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
   await chat();await submit("What is an onion epidermis?");assert.equal(calls.length,count,"Route changes do not persist a browser key");

@@ -73,8 +73,12 @@ export async function createRenderPipeline(renderer, scene, camera) {
         color=neutralTone?NeutralToneMapping(color/max(alpha,.0001)):ACESFilmicToneMapping(color/max(alpha,.0001));
         color=sRGBTransferOETF(vec4(color,1.)).rgb;
         vec3 image=texture2D(backdrop,(vUv-.5)*crop+.5).rgb;
-        vec3 intro=sRGBTransferOETF(texture2D(presentationBackdrop,vUv)).rgb;
-        image=mix(image,intro,presentationOpacity);
+        if(presentationOpacity>0.){
+          vec3 intro=texture2D(presentationBackdrop,vUv).rgb;
+          intro=neutralTone?NeutralToneMapping(intro):ACESFilmicToneMapping(intro);
+          intro=sRGBTransferOETF(vec4(intro,1.)).rgb;
+          image=mix(image,intro,presentationOpacity);
+        }
         gl_FragColor=vec4(mix(image,color,alpha),1.);
       }`,
   });

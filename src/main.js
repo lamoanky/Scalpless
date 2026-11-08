@@ -1,4 +1,5 @@
 import "./style.css";
+import { Box3 } from "three";
 import { createBench } from "./scene.js";
 import { createOnion } from "./specimens/onion.js";
 import { createPhysics } from "./physics.js";
@@ -171,13 +172,14 @@ try {
   const handTracking = installHandTracking(bench, input);
   const organSlide = installOrganSlide(lab, bench);
   const cameraPanel = $("hand-tracking-panel");
+  const cameraPanelOpen = () => cameraPanel?.hidden === false;
   const teachingChat = installTeachingChat(lab, bench, {
-    onToggle: open => organSlide.setSuspended(open || !cameraPanel.hidden),
+    onToggle: open => organSlide.setSuspended(open || cameraPanelOpen()),
   });
   // Observe setup-panel visibility without touching the camera/gesture adapter.
-  new MutationObserver(() => {
-    if (!cameraPanel.hidden) teachingChat.close();
-    organSlide.setSuspended(teachingChat.isOpen || !cameraPanel.hidden);
+  if (cameraPanel) new MutationObserver(() => {
+    if (cameraPanelOpen()) teachingChat.close();
+    organSlide.setSuspended(teachingChat.isOpen || cameraPanelOpen());
   }).observe(cameraPanel, {attributes:true, attributeFilter:["hidden"]});
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {
@@ -426,7 +428,12 @@ try {
       ...lab.getDebug(),
       presentation: presentation.getDebug(),
       appearance: specimen.appearance ?? "natural",
-      geometryBounds: specimen.getBounds?.(),
+      geometryBounds: specimen.getBounds?.() ?? Object.fromEntries(
+        [...specimen.parts].map(([id,part]) => {
+          const box = new Box3().setFromObject(part.group, true);
+          return [id, {min:box.min.toArray(),max:box.max.toArray()}];
+        }),
+      ),
       fps: frames.length / frames.reduce((a, b) => a + b, 0),
       manipulationFps: manipulationFrames.length
         ? manipulationFrames.length /

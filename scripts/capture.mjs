@@ -71,14 +71,16 @@ async function checkIconInterface() {
         visibleText.push(text);
     }
     const unlabeled = [...document.querySelectorAll("button")]
-      .filter((b) => !b.getAttribute("aria-label"))
+      // Icon controls need explicit labels; text buttons inside the optional
+      // teaching panel already have a native accessible name.
+      .filter((b) => !b.getAttribute("aria-label") && !b.textContent.trim())
       .map((b) => b.id);
     return { visibleText, unlabeled };
   });
   assert.deepEqual(
     issues,
     { visibleText: [], unlabeled: [] },
-    "UI stays text-free with accessible icon names",
+    "Initial bench stays icon-only and every button has an accessible name",
   );
 }
 const pause = (ms) => page.waitForTimeout(check ? Math.min(ms, 150) : ms);
@@ -172,8 +174,8 @@ await page.locator("#primary-action").click();
 await page.locator("#place-action").click();
 await page.waitForTimeout(1500);
 assert(
-  (await debug()).positions.section[1] > 0.005,
-  "Section remains above the tray",
+  (await debug()).geometryBounds.section.min[1] > -0.007,
+  "Section geometry remains above the physical bench",
 );
 await page.screenshot({ path: "output/scalpless-cutaway.png" });
 await choosePiece("layer-0");
@@ -231,9 +233,16 @@ if (check) {
     await page.locator("#primary-action").click();
   await page.locator("#place-action").click();
   await page.waitForTimeout(1500);
+  const epidermisPlacement = await debug();
+  await writeFile("output/onion-placement-check.json", JSON.stringify({
+    origin:epidermisPlacement.positions.epidermis,
+    bounds:epidermisPlacement.geometryBounds.epidermis,
+    body:epidermisPlacement.physicalPieces.epidermis,
+  },null,2));
+  await page.screenshot({path:"output/onion-placement-check.png"});
   assert(
-    (await debug()).positions.epidermis[1] > -0.04,
-    "Epidermis stays on bench",
+    epidermisPlacement.geometryBounds.epidermis.min[1] > -0.007,
+    "Epidermis geometry stays on the bench or other tissue",
   );
   await page.screenshot({ path: "output/scalpless-epidermis.png" });
   // Multiple orbit angles expose the capped surfaces for visual review.
@@ -252,7 +261,7 @@ if (check) {
   for (let i = 0; i < 25; i++) await page.keyboard.press("ArrowDown");
   await page.locator('[data-move="release"]').click();
   await page.waitForTimeout(1800);
-  assert((await debug()).positions.section[1] > -0.05);
+  assert((await debug()).geometryBounds.section.min[1] > -0.007);
   await page.locator("#primary-action").click();
   await reset();
   d = await debug();

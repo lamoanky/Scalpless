@@ -27,3 +27,18 @@ Added explicit-send Gemini questions with bounded conversation history and an op
 Validation: 92 unit tests passed, including real HTTP tests of the local proxy with a mocked upstream. The production build and browser teaching checks passed: no-key/no-auto-send, explicit connection setup, contextual follow-ups, opt-out, markup escaping, quota failure, cancellation/late replies, forgetting keys, keyboard isolation, specimen switching, 390/320 px and short landscape viewports. All provider requests used dummy test credentials and intercepted replies. Actual Gemini generation and account-specific access remain unverified until a real key is supplied.
 
 The input/camera adapter, recognizers, LabController and physics are byte-for-byte unchanged from the preserved baseline. See the README's camera merge notes for DOM visibility coordination and the remaining real-camera checks.
+
+## Final verification and artifacts
+
+All checks pass: 92 unit tests, production build, onion workflow, natural and blue frog workflows (all six organs), landing continuity/history, organ studies, teaching chat, simulated camera integration, and the retained gesture sandbox. Targeted reruns cover the final fixes below. Latest sampled manipulation averages were approximately 59.5 fps for the recorded natural frog, 58.5 fps for blue, and 59.8 fps for onion.
+
+- Updated the old icon-only assertion to accept native accessible names on the new text buttons. The initial bench still has no visible copy.
+- Replaced onion placement checks based on group origins with precise world-space mesh bounds. A released, rotated patch can have an origin below the floor while its actual vertices rest above it. Observed captures show the patch seated on other tissue; no physics or interaction logic was changed. Bounds and rigid-body diagnostics are captured for future failures.
+- Corrected transparent reflection sampling during the landing blend so uncovered texels do not darken the blue room. The extra presentation color work is skipped after entry.
+- Verified that hiding the interface also hides the scissored organ view without changing dissection state, and that Escape acts on the study only when it has focus.
+- Verified network failure, cancelled/late responses, context opt-out, route-based key lifetime, and short landscape layouts. API output is rendered as plain text.
+- Restarted the old Vite dev/preview processes to pick up the proxy configuration. Both ports correctly returned the no-key 503 response through the real optional local proxy. The temporary no-key proxy was stopped after this check, so `npm run tutor` can be started normally with the user's configuration.
+
+The development app remains available on port 5173, with production preview on 4173. Ignored artifacts include `output/frog-lab-final.png` (3200 × 2000), `output/frog-walkthrough.webm` (46 seconds), organ/chat desktop and mobile screenshots, and `output/final-checks/` logs. The initial final-batch log retains the obsolete assertion failure; the subsequent `onion-recheck.log` contains the passing corrected workflow. No QA images, videos, build output or credentials are committed.
+
+Not externally verified: real Gemini generation/account access (no real key used) and recognition accuracy on a person's webcam. Model anatomy remains the existing simplified educational illustration and needs subject-matter validation before instructional deployment.

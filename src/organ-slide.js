@@ -47,8 +47,10 @@ export function installOrganSlide(lab, bench) {
   let yaw = 0, pitch = 0, drag = null;
   const viewport = new THREE.Vector4(), scissor = new THREE.Vector4();
   const delta = new THREE.Quaternion(), euler = new THREE.Euler();
+  const isVisible = () => !panel.hidden && getComputedStyle(panel).visibility !== "hidden";
   function visibility() {
     const show = Boolean(id) && !minimized && !suspended;
+    if (!show) drag = null;
     if (!show && panel.contains(document.activeElement)) bench.host.focus({preventScroll:true});
     panel.hidden = !show;
     restore.hidden = !id || !minimized || suspended;
@@ -104,9 +106,11 @@ export function installOrganSlide(lab, bench) {
   lab.subscribe(update); update(lab.getState());
   return {
     setSuspended(value) { suspended = value; visibility(); },
-    getDebug: () => ({id, visible:!panel.hidden, minimized, yaw, pitch}),
+    getDebug: () => ({id, visible:isVisible(), minimized, yaw, pitch}),
     render() {
-      if (panel.hidden || !clone || !source) return;
+      // The landing can hide the whole interface while retaining lab state.
+      // A hidden HTML panel must not leave its scissored 3D view on the canvas.
+      if (!isVisible() || !clone || !source) return;
       const rect = view.getBoundingClientRect(), host = bench.host.getBoundingClientRect();
       if (rect.width < 1 || rect.height < 1) return;
       const renderer = bench.renderer;

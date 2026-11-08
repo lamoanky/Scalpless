@@ -30,6 +30,14 @@ try {
     assert.deepEqual((await debug()).state,before.state,"Study rotation does not mutate the lab");
     assert((await debug()).positions.liver.every((value,i)=>Math.abs(value-before.positions.liver[i])<1e-7),"Study rotation never moves the live organ (Rapier float precision)");
     assert((await debug()).organStudy.yaw>0);
+    await page.evaluate(()=>document.documentElement.classList.add("landing-preview"));
+    assert.equal((await debug()).organStudy.visible,false,"The landing's visibility boundary also hides the 3D study");
+    assert.deepEqual((await debug()).state,before.state);
+    await page.evaluate(()=>document.documentElement.classList.remove("landing-preview"));
+    assert.equal((await debug()).organStudy.visible,true);
+    // Hiding the interface removes browser focus; restore it before testing
+    // the study's Escape key rather than the bench's cancel-operation shortcut.
+    await preview.focus();
     await page.waitForTimeout(400);
     await page.screenshot({path:`output/organ-study-${appearance}.png`});
     await page.keyboard.press("Escape");

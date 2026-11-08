@@ -25,7 +25,7 @@ test("key travels only in Google's header; prompts and answers are redacted",asy
 
 test("server connection sends no browser key or provider settings",async()=>{
   let call;const session=createTeachingSession({fetchImpl:async(url,options)=>{call={url,options};return new Response(JSON.stringify({answer:"The liver makes bile."}));}});
-  session.configure({mode:"browser",key});session.configure({mode:"server",key});
+  session.configure({mode:"browser",key});session.configure({mode:"server",key,model:"invalid / browser model"});
   assert.equal(await session.ask({question:"What does the liver do?",context:null}),"The liver makes bile.");
   assert.equal(call.url,"/api/tutor");assert(!JSON.stringify(call).includes(key));
   assert.deepEqual(Object.keys(JSON.parse(call.options.body)),["question","history","context"]);
