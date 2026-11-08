@@ -2,7 +2,8 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 
 const files = {
-  '/': ['index.html', 'text/html'],
+  '/': ['gesture-lab.html', 'text/html'],
+  '/gesture-lab.html': ['gesture-lab.html', 'text/html'],
   '/styles.css': ['styles.css', 'text/css'],
   '/app.js': ['app.js', 'text/javascript'],
   '/gestures.js': ['gestures.js', 'text/javascript'],

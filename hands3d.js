@@ -27,7 +27,7 @@ function createScalpel() {
 
 export async function createHandScene(container) {
   const loader=new GLTFLoader();
-  const models=await Promise.all([loader.loadAsync('/assets/left-hand.glb'),loader.loadAsync('/assets/right-hand.glb')]);
+  const models=await Promise.all([loader.loadAsync(new URL('./assets/left-hand.glb',import.meta.url).href),loader.loadAsync(new URL('./assets/right-hand.glb',import.meta.url).href)]);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor('#102720');

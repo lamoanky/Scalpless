@@ -9,7 +9,7 @@ test('mouse can grab, lift, place, cut and reset the rendered WebGL sandbox',asy
     return route.fulfill({path:new URL(`../node_modules/three/${path}`,import.meta.url).pathname.replace(/^\/([A-Za-z]:)/,'$1'),contentType:'text/javascript'});
   });
   await page.route('https://fonts.googleapis.com/**',route=>route.abort());
-  await page.goto('/');
+  await page.goto('/gesture-lab.html');
   const canvas=page.locator('#hands-stage canvas');await expect(canvas).toBeVisible();
   await expect(page.locator('#hands-status')).toHaveText('Mouse controls ready');
   await canvas.scrollIntoViewIfNeeded();

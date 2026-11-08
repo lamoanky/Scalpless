@@ -16,7 +16,8 @@ const frame=(points)=>{
 // Generic WebXR hands use 25 sibling bones with absolute joint transforms.
 // Retarget MediaPipe's 21 landmarks, synthesizing the four metacarpal bases.
 export class RiggedHand {
-  constructor(scene,gltf,color,label,scalpel) {
+  constructor(scene,gltf,color,label,scalpel,options={}) {
+    this.unitScale=options.unitScale||1;
     this.label=label;this.group=new THREE.Group();scene.add(this.group);
     this.asset=gltf.scene;this.group.add(this.asset);
     this.mesh=this.asset.getObjectByProperty('type','SkinnedMesh');
@@ -52,7 +53,7 @@ export class RiggedHand {
     if(!rotation) return;
     const inverse=rotation.clone().invert();
     const palmDelta=rotation.clone().multiply(this.restFrame.clone().invert());
-    const modelScale=THREE.MathUtils.clamp(this.observed[0].distanceTo(this.observed[9]),.55,1.65)/this.restLength;
+    const modelScale=THREE.MathUtils.clamp(this.observed[0].distanceTo(this.observed[9]),.55*this.unitScale,1.65*this.unitScale)/this.restLength;
     this.points.forEach((p,i)=>p.copy(this.observed[i]));
     fingerSpecs.forEach((finger,f)=>{
       this.heldFor[f]=held[f]?this.heldFor[f]+dt:0;
@@ -107,7 +108,7 @@ export class RiggedHand {
     this.group.scale.setScalar(distanceScale);this.group.position.copy(pivot).multiplyScalar(1-distanceScale);
     const normal=new THREE.Vector3(0,0,this.label==='Left'?1:-1).applyQuaternion(rotation);
     const direction=this.points[8].clone().sub(this.points[6]).normalize();
-    this.scalpel.position.copy(this.points[8]).addScaledVector(normal,.13).addScaledVector(direction,-.16);
+    this.scalpel.position.copy(this.points[8]).addScaledVector(normal,.13*this.unitScale).addScaledVector(direction,-.16*this.unitScale);
     if(direction.lengthSq()>.5) this.scalpel.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction);
   }
 }

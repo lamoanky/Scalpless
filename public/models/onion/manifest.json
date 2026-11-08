@@ -1,0 +1,28 @@
+{
+  "source": "design/reference.png",
+  "method": "Reference-guided modeling; hidden geometry inferred; reference-matched palette with synthesized native 4K skin detail.",
+  "models": [
+    {
+      "variant": "intact",
+      "file": "public/models/onion/onion-reference-intact.glb",
+      "meshes": 112,
+      "vertices": 540103,
+      "bytes": 23542344,
+      "textureSizes": [
+        "4096×2048",
+        "2048×2048"
+      ]
+    },
+    {
+      "variant": "cutaway",
+      "file": "public/models/onion/onion-reference-cutaway.glb",
+      "meshes": 57,
+      "vertices": 273227,
+      "bytes": 21596636,
+      "textureSizes": [
+        "4096×2048",
+        "2048×2048"
+      ]
+    }
+  ]
+}
