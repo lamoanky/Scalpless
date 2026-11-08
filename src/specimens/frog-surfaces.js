@@ -25,7 +25,7 @@ function surface(positions, uvs, indices, columns) {
 export function organicTube(
   points,
   radii,
-  { segments = 48, sides = 16, flat = 0.78 } = {},
+  { segments = 48, sides = 16, flat = 0.78, wrinkle = .012, muscleRidge = 0 } = {},
 ) {
   const path = new THREE.CatmullRomCurve3(points.map(V));
   const positions = [],
@@ -41,18 +41,24 @@ export function organicTube(
     const up = new THREE.Vector3().crossVectors(tangent, cross).normalize();
     const f = t * (radii.length - 1),
       a = Math.min(radii.length - 2, Math.floor(f));
-    const r = THREE.MathUtils.lerp(radii[a], radii[a + 1], f - a);
+    // Smooth muscle bellies and organ necks instead of radius kinks at controls.
+    const u = f - a, p0 = radii[Math.max(0, a - 1)], p1 = radii[a],
+      p2 = radii[a + 1], p3 = radii[Math.min(radii.length - 1, a + 2)];
+    const r = Math.max(Math.min(p1, p2) * .7, .5 * (
+      2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u
+      + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u));
     const end = Math.sin(
       (Math.min(1, (Math.min(t, 1 - t) * segments) / 2) * Math.PI) / 2,
     );
     for (let j = 0; j <= sides; j++) {
       const theta = (j / sides) * Math.PI * 2;
-      const wrinkle =
-        1 + 0.018 * Math.sin(t * 59 + theta * 3) * Math.sin(Math.PI * t);
+      const ripple =
+        1 + wrinkle * Math.sin(t * 59 + theta * 3) * Math.sin(Math.PI * t)
+          + muscleRidge * Math.cos(theta * 3 + .3 * Math.sin(t * 6)) * Math.sin(Math.PI * t) ** 2;
       const q = p
         .clone()
-        .addScaledVector(cross, Math.cos(theta) * r * end * wrinkle)
-        .addScaledVector(up, Math.sin(theta) * r * end * flat * wrinkle);
+        .addScaledVector(cross, Math.cos(theta) * r * end * ripple)
+        .addScaledVector(up, Math.sin(theta) * r * end * flat * ripple);
       positions.push(...q);
       uvs.push(j / sides, t);
       if (i < segments && j < sides) {
@@ -67,12 +73,12 @@ export function organicTube(
 
 export function headGeometry() {
   const profile = [
-    [-0.08, 0, 0.012, 0],
-    [-0.077, 0.014, 0.012, 0.004],
-    [-0.07, 0.025, 0.011, 0.008],
-    [-0.06, 0.029, 0.01, 0.011],
-    [-0.049, 0.026, 0.009, 0.01],
-    [-0.039, 0.018, 0.009, 0.008],
+    [-0.083, 0, 0.010, 0],
+    [-0.078, 0.016, 0.010, 0.003],
+    [-0.07, 0.025, 0.010, 0.007],
+    [-0.06, 0.027, 0.010, 0.008],
+    [-0.049, 0.026, 0.009, 0.008],
+    [-0.039, 0.019, 0.009, 0.007],
     [-0.032, 0, 0.01, 0],
   ];
   const positions = [],
@@ -115,41 +121,7 @@ export function headGeometry() {
   return surface(positions, uvs, indices, cols);
 }
 
-export function bodyWall() {
-  const profile = new THREE.CatmullRomCurve3(
-    [
-      [0, 0.001, 0],
-      [0.45, 0.0017, 0],
-      [0.84, 0.005, 0],
-      [1.035, 0.012, 0],
-      [1.055, 0.019, 0],
-      [1, 0.0243, 0],
-      [0.965, 0.0242, 0],
-      [0.88, 0.016, 0],
-      [0.5, 0.014, 0],
-      [0, 0.014, 0],
-    ].map(V),
-  );
-  const positions = [],
-    uvs = [],
-    indices = [],
-    rows = 54,
-    cols = 96;
-  for (let i = 0; i <= rows; i++) {
-    const p = profile.getPoint(i / rows);
-    for (let j = 0; j <= cols; j++) {
-      const a = (j / cols) * Math.PI * 2;
-      positions.push(Math.cos(a) * p.x * 0.029, p.y, Math.sin(a) * p.x * 0.042);
-      uvs.push(j / cols, i / rows);
-      if (i < rows && j < cols) {
-        const k = i * (cols + 1) + j,
-          n = k + cols + 1;
-        indices.push(k, n, k + 1, k + 1, n, n + 1);
-      }
-    }
-  }
-  return surface(positions, uvs, indices, cols);
-}
+export { torsoSurface as bodyWall } from "./frog-anatomy.js";
 
 export function lobe(
   center,
@@ -252,120 +224,5 @@ export function irisGeometry(center, direction) {
   return g;
 }
 
-export async function frogMaterials() {
-  const loader = new THREE.TextureLoader(),
-    base = `${import.meta.env.BASE_URL}textures/frog/`;
-  async function maps(name) {
-    const [map, normalMap, roughnessMap] = await Promise.all(
-      ["color", "normal", "roughness"].map((k) =>
-        loader.loadAsync(`${base}${name}-${k}.webp`),
-      ),
-    );
-    map.colorSpace = THREE.SRGBColorSpace;
-    for (const t of [map, normalMap, roughnessMap]) {
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.anisotropy = 8;
-    }
-    return { map, normalMap, roughnessMap };
-  }
-  const [skinMaps, bellyMaps, tissueMaps, muscleMaps, irisMap] =
-    await Promise.all([
-      maps("skin"),
-      maps("belly"),
-      maps("tissue"),
-      maps("muscle"),
-      loader.loadAsync(`${base}iris-color.webp`),
-    ]);
-  irisMap.colorSpace = THREE.SRGBColorSpace;
-  const skin = new THREE.MeshPhysicalMaterial({
-    ...skinMaps,
-    roughness: 0.8,
-    normalScale: new THREE.Vector2(0.36, 0.36),
-    clearcoat: 0.18,
-    clearcoatRoughness: 0.42,
-  });
-  // Continuous ventral coloration across a single limb surface avoids the old
-  // separate cream "petal" shapes. The blend follows the baked surface normal.
-  skin.onBeforeCompile = (shader) => {
-    shader.uniforms.bellyMap = { value: bellyMaps.map };
-    shader.vertexShader = shader.vertexShader.replace(
-      "#include <common>",
-      "#include <common>\nvarying float vVentral;",
-    );
-    shader.vertexShader = shader.vertexShader.replace(
-      "#include <beginnormal_vertex>",
-      "#include <beginnormal_vertex>\nvVentral=smoothstep(.08,.78,normal.y);",
-    );
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <common>",
-      "#include <common>\nvarying float vVentral; uniform sampler2D bellyMap;",
-    );
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <map_fragment>",
-      "#include <map_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb, texture2D(bellyMap,vMapUv).rgb, vVentral*.96);",
-    );
-  };
-  skin.customProgramCacheKey = () => "frog-ventral-skin-v1";
-  const belly = new THREE.MeshPhysicalMaterial({
-    ...bellyMaps,
-    roughness: 0.87,
-    normalScale: new THREE.Vector2(0.3, 0.3),
-    clearcoat: 0.12,
-    clearcoatRoughness: 0.45,
-  });
-  function tissue(color, roughness = 0.6) {
-    return new THREE.MeshPhysicalMaterial({
-      ...tissueMaps,
-      color,
-      roughness,
-      normalScale: new THREE.Vector2(0.25, 0.25),
-      clearcoat: 0.2,
-      clearcoatRoughness: 0.3,
-      sheen: 0.22,
-      sheenColor: new THREE.Color("#deb2a1"),
-    });
-  }
-  const translucent = new THREE.MeshPhysicalMaterial({
-    color: "#2980cd",
-    transparent: true,
-    opacity: 0.46,
-    depthWrite: false,
-    roughness: 0.38,
-    clearcoat: 0.22,
-    side: THREE.FrontSide,
-  });
-  translucent.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <opaque_fragment>",
-      `diffuseColor.a *= .65 + .9 * pow(1. - abs(dot(normal, normalize(vViewPosition))), 2.);\n#include <opaque_fragment>`,
-    );
-  };
-  return {
-    skin,
-    belly,
-    translucent,
-    cavity: tissue("#8a6956", 0.85),
-    rim: tissue("#ab8c70", 0.78),
-    heart: tissue("#9c3942", 0.58),
-    liver: tissue("#634139", 0.62),
-    lung: tissue("#cf9991", 0.72),
-    stomach: tissue("#ccab83", 0.73),
-    intestine: tissue("#bf9275", 0.72),
-    muscle: new THREE.MeshPhysicalMaterial({
-      ...muscleMaps,
-      roughness: 0.69,
-      normalScale: new THREE.Vector2(0.28, 0.28),
-      clearcoat: 0.15,
-    }),
-    bone: tissue("#d6c69f", 0.84),
-    artery: tissue("#983f43", 0.65),
-    vein: tissue("#3c6170", 0.7),
-    lip: tissue("#5b6040", 0.9),
-    iris: new THREE.MeshPhysicalMaterial({
-      map: irisMap,
-      roughness: 0.18,
-      clearcoat: 1,
-      clearcoatRoughness: 0.08,
-    }),
-  };
-}
+// Keep the geometry builders independent of the replaceable appearance layer.
+export { frogMaterials } from "./frog-materials.js";

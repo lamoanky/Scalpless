@@ -2,29 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createPhysics } from "../src/physics.js";
-import { lobe } from "../src/specimens/frog-surfaces.js";
+import { liverGeometries, abdomenGeometry, abdomenColliderGeometries } from "../src/specimens/frog-anatomy.js";
 
 test("thin liver lobes settle after rotated releases on the tray and collection floor", async () => {
   const physics = await createPhysics();
-  const geometries = [
-    lobe([-0.012, 0.026, -0.008], [0.0135, 0.0056, 0.0175], {
-      rotate: -0.28,
-      taper: 0.24,
-      bend: 0.16,
-      detail: 0.065,
-    }),
-    lobe([0.01, 0.026, -0.008], [0.012, 0.0051, 0.014], {
-      rotate: 0.3,
-      taper: 0.2,
-      bend: -0.13,
-      detail: 0.05,
-    }),
-    lobe([0.006, 0.023, 0.009], [0.01, 0.0046, 0.0135], {
-      rotate: -0.24,
-      taper: 0.25,
-      detail: 0.06,
-    }),
-  ];
+  const geometries = liverGeometries();
   const group = new THREE.Group();
   const meshes = geometries.map((g) => new THREE.Mesh(g));
   group.add(...meshes);
@@ -54,5 +36,28 @@ test("thin liver lobes settle after rotated releases on the tray and collection 
   } finally {
     physics.world.free();
     geometries.forEach((g) => g.dispose());
+  }
+});
+
+test("the thin abdominal wall settles on the floor and tray lip without tunneling", async () => {
+  const physics = await createPhysics(), geometry = abdomenGeometry();
+  const group = new THREE.Group(), mesh = new THREE.Mesh(geometry);
+  group.add(mesh);
+  const colliders = abdomenColliderGeometries();
+  const part = { id: "abdomen", group, meshes: [mesh],
+    compoundCollider: true, collisionGeometries: colliders };
+  try {
+    for (const x of [-.15, -.24]) for (const angle of [0, .4, 1.2]) {
+      group.position.set(x, .034, 0);
+      group.rotation.set(.1, angle, .1);
+      const body = physics.createBody(part);
+      assert.equal(body.numColliders(), 24);
+      for (let i = 0; i < 360; i++) physics.step();
+      const box = new THREE.Box3().setFromObject(group, true);
+      assert(box.min.y > -.004, `Abdominal wall stayed on the bench: ${box.min.y}`);
+      assert(Math.abs(body.linvel().y) < .03, "Cover settles after release");
+    }
+  } finally {
+    physics.world.free(); geometry.dispose(); colliders.forEach(g => g.dispose());
   }
 });

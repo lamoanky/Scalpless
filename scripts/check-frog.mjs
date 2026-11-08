@@ -286,6 +286,12 @@ try {
     JSON.stringify(report, null, 2),
   );
   console.log("Frog checks passed", JSON.stringify(report));
+} catch (error) {
+  if (!page.isClosed()) {
+    await writeFile("output/frog-failure.json", JSON.stringify(await debug(), null, 2));
+    await page.screenshot({ path: "output/frog-failure.png" });
+  }
+  throw error;
 } finally {
   const video = page.video();
   await context.close();

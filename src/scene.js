@@ -283,7 +283,25 @@ export async function createBench(host, view = {}) {
   return {
     scene,
     render,
-    setSpecimen: contactShadows.setSpecimen,
+    setSpecimen(specimen) {
+      contactShadows.setSpecimen(specimen);
+      const frog = specimen.id === "frog";
+      pipeline.setTissueOcclusion(frog);
+      // Neutral tissue illumination within the blue lab. This changes only the
+      // frog bench's lighting, never home/orbit/zoom or the onion's appearance.
+      scene.environmentIntensity = frog ? .68 : .5;
+      key.color.set(frog ? "#fff4eb" : "#f7faff");
+      key.intensity = frog ? 2.35 : 3;
+      rim.intensity = frog ? .58 : 1.4;
+      fill.intensity = frog ? .22 : .15;
+      key.shadow.radius = frog ? 3 : 6;
+      key.shadow.intensity = frog ? .75 : .6;
+      renderer.transmissionResolutionScale = frog ? .5 : 1;
+      // Keep transmission, contact occlusion and antialiasing within the laptop
+      // frame budget on Retina displays; CSS layout and camera stay identical.
+      renderer.setPixelRatio(Math.min(devicePixelRatio, frog ? 1.1 : 1.5));
+      resize();
+    },
     camera,
     renderer,
     controls,

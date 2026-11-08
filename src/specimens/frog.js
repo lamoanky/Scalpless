@@ -10,6 +10,11 @@ import {
   frogMaterials,
 } from "./frog-surfaces.js";
 
+import {
+  abdomenGeometry, abdomenColliderGeometries, abdomenPoint, cavityOutline, rimHeight, torsoSurface,
+  liverGeometries, lungGeometry, STOMACH_PATH, INTESTINE_PATH,
+} from "./frog-anatomy.js";
+
 // Reference-guided ventral anatomy in metres. Replace the geometry here without
 // changing input events, the controller, or the physical placement workflow.
 export const FROG_ORIGIN = new THREE.Vector3(-0.078, 0.022, 0);
@@ -21,50 +26,6 @@ export const FROG_ORGANS = [
   "stomach",
   "intestines",
 ];
-
-function dome() {
-  const positions = [],
-    uv = [],
-    indices = [],
-    rows = 20,
-    cols = 64;
-  for (let side = 0; side < 2; side++)
-    for (let row = 0; row <= rows; row++) {
-      const a = ((row / rows) * Math.PI) / 2;
-      for (let col = 0; col <= cols; col++) {
-        const angle = (col / cols) * Math.PI * 2;
-        positions.push(
-          Math.sin(a) * Math.cos(angle) * 0.029,
-          0.0237 + Math.cos(a) * 0.015 - side * 0.0017,
-          Math.sin(a) * Math.sin(angle) * 0.042,
-        );
-        uv.push(col / cols, row / rows);
-      }
-    }
-  const offset = (rows + 1) * (cols + 1);
-  for (let side = 0; side < 2; side++)
-    for (let row = 0; row < rows; row++)
-      for (let col = 0; col < cols; col++) {
-        const a = side * offset + row * (cols + 1) + col,
-          b = a + cols + 1;
-        if (side) indices.push(a, b, a + 1, b, b + 1, a + 1);
-        else indices.push(a, a + 1, b, b, a + 1, b + 1);
-      }
-  for (let col = 0; col < cols; col++) {
-    const a = rows * (cols + 1) + col,
-      b = a + offset;
-    indices.push(a, b, a + 1, b, b + 1, a + 1);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3),
-  );
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
 
 export async function createFrog(scene) {
   const materials = await frogMaterials();
@@ -153,7 +114,25 @@ export async function createFrog(scene) {
     );
   }
   function vessels(part, points, radius, anatomyOnly = false) {
-    tube(part, points, radius, materials.artery, false, anatomyOnly, {
+    const probes = anatomyOnly ? [] : part.meshes
+      .filter(m => m.material !== materials.artery && m.material !== materials.vein)
+      .map(m => new THREE.Mesh(m.geometry, m.material));
+    const ray = new THREE.Raycaster();
+    function followSurface(controls) {
+      if (anatomyOnly) return controls;
+      const curve = new THREE.CatmullRomCurve3(controls.map(p => new THREE.Vector3(...p)));
+      const result = [];
+      for (let i = 0; i <= 28; i++) {
+        const p = curve.getPoint(i / 28);
+        ray.set(new THREE.Vector3(p.x, .1, p.z), new THREE.Vector3(0, -1, 0));
+        const hit = ray.intersectObjects(probes, false)[0];
+        if (hit) result.push([p.x, hit.point.y + radius * .2, p.z]);
+      }
+      return result;
+    }
+    const main = followSurface(points);
+    if (main.length < 2) return;
+    tube(part, main, radius, materials.artery, false, anatomyOnly, {
       segments: 24,
       sides: 8,
       flat: 1,
@@ -163,7 +142,8 @@ export async function createFrog(scene) {
       y - 0.00012,
       z + 0.0002,
     ]);
-    tube(part, alternate, radius * 0.82, materials.vein, false, anatomyOnly, {
+    const venous = followSurface(alternate);
+    if (venous.length > 1) tube(part, venous, radius * 0.82, materials.vein, false, anatomyOnly, {
       segments: 24,
       sides: 8,
       flat: 1,
@@ -171,13 +151,14 @@ export async function createFrog(scene) {
     for (let i = 1; i < points.length - 1; i++) {
       const [x, y, z] = points[i],
         side = i % 2 ? 1 : -1;
-      tube(
-        part,
-        [
+      const branch = followSurface([
           [x, y, z],
-          [x + side * 0.002, y - 0.0004, z + 0.001],
-          [x + side * 0.004, y - 0.001, z + 0.003],
-        ],
+          [x + side * 0.001, y - 0.0004, z + 0.001],
+          [x + side * 0.0025, y - 0.001, z + 0.003],
+        ]);
+      if (branch.length < 2) continue;
+      tube(
+        part, branch,
         [radius * 0.6, radius * 0.3, 0.00004],
         materials.artery,
         false,
@@ -187,42 +168,35 @@ export async function createFrog(scene) {
     }
   }
 
-  const body = part("body", "Frog body", [0, 0.02, 0], "#78834f", true);
+  const body = part("body", "Frog body", [0, 0.02, 0], "#b95b28", true);
   body.compoundCollider = true;
   mesh(body, bodyWall(), skin, false);
-  const wallColliders = [lobe([0, 0.007, 0], [0.031, 0.0068, 0.045])];
-  organ(body, [0, 0.014, 0], [0.027, 0.0027, 0.04], materials.cavity, {
-    detail: 0.035,
-  });
+  const wallColliders = [lobe([0, 0.004, 0], [0.034, 0.0035, 0.044])];
+  mesh(body, torsoSurface(true), materials.cavity, false);
   // One continuous skin surface, with separate invisible collider arcs.
   for (let i = 0; i < 24; i++) {
     const wall = Array.from({ length: 6 }, (_, j) => {
       const a = ((i + j / 5) / 24) * Math.PI * 2;
-      return [Math.cos(a) * 0.0297, 0.0188, Math.sin(a) * 0.0425];
+      const [x, z] = cavityOutline(a, 1.12);
+      return [x, rimHeight(a) * .73, z];
     });
     wallColliders.push(
-      organicTube(wall, [0.003, 0.003], { segments: 10, sides: 10, flat: 1.6 }),
+      organicTube(wall, [0.0035, 0.0035], { segments: 10, sides: 10, flat: 1.6 }),
     );
   }
-  const lip = Array.from({ length: 97 }, (_, i) => {
-    const a = (i / 96) * Math.PI * 2;
-    return [Math.cos(a) * 0.0283, 0.0243, Math.sin(a) * 0.0411];
-  });
-  tube(body, lip, 0.00048, materials.rim, false, false, {
-    segments: 144,
-    sides: 8,
-    flat: 0.65,
-  });
-  mesh(body, headGeometry(), skin);
+  // The cover and torso already share a closed rim. An extra ring made the
+  // intact abdomen look like a removable lid even before the incision.
+  const head = mesh(body, headGeometry(), skin);
   // Mouth line follows the broad jaw, with a narrow upper lip and shallow throat folds.
+  const headProbe = new THREE.Mesh(head.geometry, skin);
+  const jawRay = new THREE.Raycaster();
   const jaw = Array.from({ length: 33 }, (_, i) => {
-    const a = -Math.PI * 0.56 + (i / 32) * Math.PI * 1.12;
-    return [
-      Math.sin(a) * 0.027,
-      0.016 - 0.0015 * Math.cos(a),
-      -0.054 - Math.cos(a) * 0.021,
-    ];
-  });
+    const a = -Math.PI * .53 + (i / 32) * Math.PI * 1.06;
+    const x = Math.sin(a) * .025, z = -.058 - Math.cos(a) * .022;
+    jawRay.set(new THREE.Vector3(x, .1, z), new THREE.Vector3(0, -1, 0));
+    const hit = jawRay.intersectObject(headProbe)[0];
+    return hit ? hit.point.addScaledVector(hit.face.normal, .000025).toArray() : null;
+  }).filter(Boolean);
   tube(body, jaw, 0.00034, materials.lip, false, false, {
     segments: 64,
     sides: 8,
@@ -236,7 +210,7 @@ export async function createFrog(scene) {
         -0.048 + k * 0.0018 + 0.002 * a * a,
       ];
     });
-    tube(body, fold, 0.00012, materials.rim, false, false, {
+    tube(body, fold, 0.00016, skin, false, false, {
       segments: 24,
       sides: 6,
     });
@@ -259,24 +233,26 @@ export async function createFrog(scene) {
     });
     mesh(
       body,
-      irisGeometry([side * 0.0275, 0.013, -0.066], [side * 0.64, 0.65, -0.4]),
+      irisGeometry([side * 0.029, 0.007, -0.066], [side * 0.9, -0.35, -0.28]),
       materials.iris,
       false,
     );
     // Upper arm, elbow and forearm are one continuous tapered surface.
     const arm = mirror([
-      [0.023, 0.012, -0.033],
+      [0.019, 0.012, -0.031],
       [0.034, 0.011, -0.027],
       [0.046, 0.007, -0.021],
       [0.052, 0.005, -0.031],
       [0.058, 0.0037, -0.044],
       [0.06, 0.0032, -0.049],
     ]);
-    const armR = [0.006, 0.007, 0.006, 0.0048, 0.0034, 0.0045];
+    const armR = [0.007, 0.0065, 0.0055, 0.0045, 0.0032, 0.0039];
     tube(body, arm, armR, skin, true, false, {
       segments: 64,
       sides: 24,
       flat: 0.72,
+      muscleRidge: .08,
+      wrinkle: .025,
     });
     tube(
       body,
@@ -335,11 +311,13 @@ export async function createFrog(scene) {
       [0.078, 0.003, 0.039],
       [0.081, 0.0026, 0.053],
     ]);
-    const legR = [0.007, 0.0125, 0.0084, 0.0063, 0.004, 0.0036, 0.0054];
+    const legR = [0.0085, 0.012, 0.0072, 0.006, 0.0037, 0.0034, 0.0047];
     tube(body, leg, legR, skin, true, false, {
       segments: 90,
       sides: 28,
       flat: 0.78,
+      muscleRidge: .1,
+      wrinkle: .025,
     });
     tube(
       body,
@@ -413,9 +391,9 @@ export async function createFrog(scene) {
       tube(
         body,
         [
-          [side * xr, 0.018, z],
-          [side * (xr - 0.0025), 0.0167, z + 0.001],
-          [side * (xr - 0.004), 0.0157, z + 0.003],
+          [side * xr, 0.013, z],
+          [side * (xr - 0.0025), 0.010, z + 0.001],
+          [side * (xr - 0.004), 0.009, z + 0.003],
         ],
         0.00025,
         materials.rim,
@@ -454,31 +432,33 @@ export async function createFrog(scene) {
   const abdomen = part(
     "abdomen",
     "Abdominal panel",
-    [0, 0.038, 0.002],
-    "#c4b99b",
+    [0, 0.033, 0.002],
+    "#b95b28",
   );
-  mesh(abdomen, dome(), belly);
+  mesh(abdomen, abdomenGeometry(), belly);
+  abdomen.compoundCollider = true;
+  abdomen.collisionGeometries = abdomenColliderGeometries();
   // Shallow abdominal mottling comes from the 2K skin maps, not raised ornaments.
-  const heart = part("heart", "Heart", [0, 0.031, -0.028], "#9c3942");
-  organ(heart, [0, 0.027, -0.027], [0.006, 0.0043, 0.008], materials.heart, {
-    taper: 0.45,
-    bend: 0.1,
-    detail: 0.045,
+  const heart = part("heart", "Heart", [0, 0.028, -0.028], "#ac5960");
+  organ(heart, [0, 0.023, -0.027], [0.0058, 0.0048, 0.0085], materials.heart, {
+    taper: 0.6,
+    bend: 0.04,
+    detail: 0.025,
   });
   for (const side of [-1, 1])
     organ(
       heart,
-      [side * 0.0033, 0.0273, -0.032],
-      [0.0032, 0.0029, 0.0035],
+      [side * 0.0031, 0.0233, -0.033],
+      [0.003, 0.0025, side > 0 ? 0.0035 : 0.0029],
       materials.heart,
       { detail: 0.07 },
     );
   tube(
     heart,
     [
-      [0, 0.027, -0.032],
-      [0.001, 0.028, -0.036],
-      [0.004, 0.025, -0.038],
+      [0, 0.023, -0.032],
+      [0.001, 0.024, -0.036],
+      [0.004, 0.022, -0.038],
     ],
     [0.0015, 0.0012, 0.00085],
     materials.artery,
@@ -497,27 +477,14 @@ export async function createFrog(scene) {
   const liver = part(
     "liver",
     "Liver · three lobes",
-    [-0.012, 0.031, -0.007],
-    "#634139",
+    [-0.012, 0.027, -0.007],
+    "#4b2522",
   );
-  organ(
-    liver,
-    [-0.012, 0.026, -0.008],
-    [0.0135, 0.0056, 0.0175],
-    materials.liver,
-    { rotate: -0.28, taper: 0.24, bend: 0.16, detail: 0.065 },
-  );
-  organ(liver, [0.01, 0.026, -0.008], [0.012, 0.0051, 0.014], materials.liver, {
-    rotate: 0.3,
-    taper: 0.2,
-    bend: -0.13,
-    detail: 0.05,
-  });
-  organ(liver, [0.006, 0.023, 0.009], [0.01, 0.0046, 0.0135], materials.liver, {
-    rotate: -0.24,
-    taper: 0.25,
-    detail: 0.06,
-  });
+  for (const geometry of liverGeometries()) mesh(liver, geometry, materials.liver);
+  tube(liver, [[-.009,.023,-.020],[0,.023,-.021],[.010,.023,-.019]],
+    [.002,.0024,.0018], materials.liver, false, false, { flat: .55 });
+  tube(liver, [[.006,.023,-.007],[.010,.022,-.001],[.010,.021,.006]],
+    [.0016,.0021,.0025], materials.liver, false, false, { flat: .55 });
   // Thin surface vessels follow the lobes and travel with the detached organ.
   vessels(
     liver,
@@ -533,86 +500,54 @@ export async function createFrog(scene) {
     ["lung-left", 1, "Left lung"],
     ["lung-right", -1, "Right lung"],
   ]) {
-    const lung = part(id, label, [side * 0.018, 0.027, -0.025], "#c5928b");
-    organ(
-      lung,
-      [side * 0.018, 0.0215, -0.024],
-      [0.0057, 0.0055, 0.012],
-      materials.lung,
-      { rotate: side * 0.18, taper: 0.22, detail: 0.075 },
-    );
+    const lung = part(id, label, [side * 0.018, 0.023, -0.027], "#9e5c6e");
+    mesh(lung, lungGeometry(side), materials.lung);
     tube(
       lung,
       [
-        [side * 0.013, 0.023, -0.033],
-        [side * 0.016, 0.026, -0.029],
-        [side * 0.018, 0.027, -0.024],
-        [side * 0.018, 0.0255, -0.017],
+        [side * 0.010, 0.021, -0.035],
+        [side * 0.014, 0.0215, -0.032],
+        [side * 0.018, 0.022, -0.028],
       ],
-      [0.0008, 0.0006, 0.0004, 0.0002],
+      [0.001, 0.00075, 0.00035],
       materials.stomach,
       false,
     );
     vessels(
       lung,
       [
-        [side * 0.018, 0.026, -0.03],
-        [side * 0.019, 0.027, -0.025],
-        [side * 0.02, 0.0255, -0.019],
+        [side * 0.017, 0.023, -0.030],
+        [side * 0.018, 0.023, -0.025],
+        [side * 0.0185, 0.022, -0.019],
       ],
       0.00013,
     );
   }
-  const stomach = part("stomach", "Stomach", [0.017, 0.024, 0.008], "#ccab83");
+  const stomach = part("stomach", "Stomach", [0.021, 0.020, 0.002], "#d6c5cf");
   tube(
     stomach,
-    [
-      [0.013, 0.021, -0.017],
-      [0.018, 0.021, -0.008],
-      [0.019, 0.021, 0.004],
-      [0.016, 0.021, 0.013],
-      [0.011, 0.02, 0.018],
-      [0.005, 0.02, 0.015],
-    ],
-    [0.002, 0.0044, 0.0053, 0.0046, 0.0027, 0.0016],
+    STOMACH_PATH,
+    [0.0018, 0.0048, 0.0068, 0.0061, 0.0033, 0.0017],
     materials.stomach,
     true,
     false,
-    { segments: 84, sides: 28, flat: 0.82 },
+    { segments: 96, sides: 32, flat: 0.74, wrinkle: .022 },
   );
   const intestines = part(
     "intestines",
     "Intestines",
-    [-0.014, 0.0222, 0.024],
-    "#bf9275",
+    [-0.017, 0.0155, 0.025],
+    "#454a2d",
   );
-  const coil = [
-    [0.005, 0.02, 0.015],
-    [0.008, 0.019, 0.021],
-    [0.004, 0.019, 0.027],
-    [-0.006, 0.02, 0.028],
-    [-0.014, 0.02, 0.024],
-    [-0.016, 0.02, 0.018],
-    [-0.012, 0.019, 0.013],
-    [-0.006, 0.019, 0.014],
-    [-0.002, 0.02, 0.018],
-    [-0.004, 0.021, 0.022],
-    [-0.01, 0.021, 0.021],
-    [-0.009, 0.02, 0.017],
-    [-0.004, 0.018, 0.01],
-    [0.006, 0.018, 0.01],
-    [0.011, 0.018, 0.022],
-    [0.005, 0.017, 0.031],
-    [0, 0.017, 0.035],
-  ];
+  const coil = INTESTINE_PATH;
   tube(
     intestines,
     coil,
-    [0.002, 0.0024, 0.002, 0.0019, 0.0022, 0.002, 0.0028],
+    [0.0017, 0.0019, 0.0017, 0.0018, 0.0016, 0.0017, 0.0025],
     materials.intestine,
     true,
     false,
-    { segments: 180, sides: 16, flat: 0.88 },
+    { segments: 220, sides: 18, flat: 0.88, wrinkle: .025 },
   );
   // Subtle mesenteric strands belong to the intestinal part, so removal never
   // leaves disconnected decorative geometry floating in the abdomen.
@@ -620,9 +555,9 @@ export async function createFrog(scene) {
     tube(
       intestines,
       [
-        [-0.005, 0.017, 0.022],
-        [-0.012 + i * 0.004, 0.017, 0.027],
-        [-0.011 + i * 0.004, 0.018, 0.025],
+        [-0.005, 0.011, 0.022],
+        [-0.012 + i * 0.004, 0.012, 0.027],
+        [-0.011 + i * 0.004, 0.013, 0.025],
       ],
       [0.00025, 0.00016, 0.00006],
       materials.rim,
@@ -635,7 +570,7 @@ export async function createFrog(scene) {
   // Separate lobe hulls also avoid a single thin, over-wide collision hull.
   liver.compoundCollider = true;
   liver.collisionGeometries = liver.meshes
-    .filter((m) => m.material === materials.liver)
+    .filter((m) => m.material === materials.liver && !m.userData.noCollision)
     .map((m) => m.geometry);
   for (const id of FROG_ORGANS) {
     const p = parts.get(id),
@@ -672,11 +607,7 @@ export async function createFrog(scene) {
   const guidePoints = Array.from({ length: 97 }, (_, i) => {
     const angle = (i / 96) * Math.PI * 2,
       radius = 0.94;
-    return new THREE.Vector3(
-      Math.cos(angle) * 0.029 * radius,
-      0.023 + 0.015 * Math.sqrt(1 - radius * radius) + 0.00015,
-      Math.sin(angle) * 0.042 * radius,
-    ).add(FROG_ORIGIN);
+    return abdomenPoint(angle, radius).add(new THREE.Vector3(0, .00015, 0)).add(FROG_ORIGIN);
   });
   const guide = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(guidePoints),
