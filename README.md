@@ -23,7 +23,7 @@ The page adapts to narrow screens, uses native navigation links and FAQ disclosu
 
 ## Working at the bench
 
-The visible interface uses icons only, with a glass toolbar at the lower left. Branding, captions, tool labels, keyboard badges, instructional text and visible notifications are omitted. Every control retains an accessible name and keyboard operation; status messages are announced to screen readers. The instructions below refer to those accessible names.
+The bench starts with icons only, with a glass toolbar at the lower left. Opening the webcam button reveals an optional hand-control setup panel. Every control retains an accessible name and keyboard operation; status messages are announced to screen readers. The instructions below refer to those accessible names.
 
 1. **Inspect (V):** left drag to orbit. Right drag or the arrow keys with the scene focused also orbit. Scroll or use **+/−** to zoom. The magnifier opens camera controls for zoom, orbit and return to the working view.
 2. **Scalpel (S):** drag along the supported longitudinal seam on the front of the intact onion. The lightbulb reveals its guide. Short strokes accumulate, and releasing preserves partial progress. At least 90% of the seam must be covered; endpoint clicks and off-surface movements cannot substitute for tracing it. **Trace supported seam** is the keyboard-accessible equivalent.
@@ -34,11 +34,30 @@ The visible interface uses icons only, with a glass toolbar at the lower left. B
 
 There are no timing challenges. Controls have 48 px minimum targets, visible focus, native buttons, accessible names and brief screen-reader announcements. Reduced-motion preferences disable camera inertia, interface transitions and animated relaxation of released attached tissue. Direct manipulation and gravitational settling remain available.
 
+## Webcam hand controls
+
+Open the lab, click the **camera icon at the upper right**, then **Start camera** and allow your browser to use it. This requests video only. The landing page never starts the camera. The onion lab loads the pinned MediaPipe runtime, WASM and hand model from local app assets; frames stay in the browser and are not recorded or uploaded.
+
+- Move your index fingertip to position the cursor. The view is mirrored horizontally. Movement sensitivity defaults to 1.50×; reduce it for finer tracing.
+- Extend only your index, with the other fingers curled, for 0.3 seconds to activate the scalpel. Trace the supported seam. The lightbulb shows its position and remains usable during tracking. Partial strokes accumulate exactly as with the mouse.
+- Pinch thumb and index together to grasp the freed section or an exposed layer edge. Keep pinching as you move to carry or peel; move back to relax a peel, and open the pinch to release. A held pinch also picks up tissue when its cursor reaches the surface.
+- Show two unpinched hands and move them apart/together to zoom. A pinch takes priority over zoom.
+- **Stop camera**, **Escape**, a mouse click in the scene, or a keyboard/tool operation returns to mouse control. Merely moving the mouse does not interrupt a gesture. Closing the setup panel keeps tracking active; the camera icon shows a green indicator.
+
+Choose a connected camera before starting. Camera rotation supports sideways mounts. Tracking loss, stalled video, disconnecting the camera, leaving the page or hiding the tab ends active cuts and releases held tissue. Cancelling startup also stops any camera stream that arrives after a delayed permission response. Camera denial leaves the mouse controls available and offers a retry.
+
+The integration reuses `GestureTracker`, stable hand assignment and the branch's visibility guard. It maps the tracked fingertip/pinch into the onion canvas, then uses the existing ray contact, cut coverage, constrained peeling and release physics. It does not apply the practice sandbox's unrelated world coordinates to the onion. Height and full rigged-hand visualization remain available in the retained sandbox rather than driving this screen-based bench adapter. Camera pose accuracy still depends on lighting, visibility and the actual webcam.
+
+The original gesture sandbox is preserved at `npm run gesture:sandbox` → http://localhost:3000; its detailed setup and rigged-hand behavior are in [README-3D.md](README-3D.md). It is separate from the Vite landing/lab routes and retains its original CDN dependencies.
+
 ## Architecture
 
 - `src/specimens/onion.js`: replaceable procedural specimen definition, closed shells, capped faces, materials, cut region, grasp points, membrane and constrained deformation.
 - `src/lab-controller.js`: attachment/separation state, seam coverage, manipulation, completed-operation snapshots, undo/reset and observable state.
-- `src/input.js`: mouse/keyboard adapter and the existing six `input:*` event listeners. No camera, hand tracking or wand code.
+- `src/input.js`: mouse/keyboard adapter, input ownership and the existing six `input:*` event listeners.
+- `src/onion-hand-input.js`: gesture recognition adapter using the merged branch's `gestures.js`, `hand-pose.js` and `tracking-quality.js`.
+- `src/hand-camera-session.js`, `src/hand-tracking.js`: cancellable webcam/model lifetime, opt-in setup, preview, cursor and failure recovery.
+- `src/hand-tracking-model.js`: lazy, local MediaPipe loading with GPU/CPU fallback. No wand implementation.
 - `src/physics.js`: Rapier world, stationary specimen colliders, compound colliders for thin shells, held kinematic bodies, released dynamic bodies, platform and bench contacts.
 - `src/scene.js`: HDRI lighting, physical instruments and user-controlled camera.
 - `src/render-pipeline.js`: subtle highlight bloom, SMAA antialiasing, ACES output for the 3D scene, and a final composite over the original-image backdrop.
@@ -65,7 +84,7 @@ Dispatch `CustomEvent`s on `window`. Coordinates are normalized **0…1 within t
 | `input:cutend`     | `{ x, y }`                                      |
 | `input:zoom`       | `{ delta }` — positive moves closer             |
 
-Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning.
+Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning. Camera events add `source: 'webcam'`; they are accepted only while the camera owns input. A tracking-loss move also carries `lost: true` to clear hover feedback. The recognizer's additive `z` is preserved, but the onion controller uses canvas X/Y ray contact and its existing manipulation plane, rather than interpreting monocular height as physical depth.
 
 `lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `selected`, `undo`, `available` and per-piece `detached`, `separation`, `bend`, `direction`. Future educational UI can observe it. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
 
@@ -78,6 +97,8 @@ npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
 npm run test:landing      # scroll, navigation, lab entry and mobile checks
+npm run test:tracking     # camera lifecycle and gesture-driven onion workflow
+npm run test:sandbox      # retained branch's rigged-hand sandbox browser checks
 npx playwright install ffmpeg # once, for video recording
 npm run capture           # PNGs and a recorded cut–peel–place walkthrough
 npm run capture:landing   # recorded landing-page scroll walkthrough
@@ -87,13 +108,15 @@ Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to anoth
 
 Browser checks verify the absence of visible interface text and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
 
+`test:tracking` first loads the actual local MediaPipe model with Chrome's simulated camera. It then supplies known landmarks at the detector boundary to test gesture recognition through real onion picking, partial cuts, pinch placement, reversible peeling, tracking-loss release, zoom and input ownership. It also checks camera denial and the mobile setup panel. Camera lifecycle unit tests cover cancellation, late permission responses, disconnects, stalled frames and retry. These checks do not measure recognition accuracy on a person's live webcam.
+
 ## Deliberate limits
 
 This is an educational MVP approximation, not a validated tissue or surgical simulator. It supports one prepared longitudinal incision, nested removable half-shells, and one membrane patch. It does not perform arbitrary mesh cutting, unrestricted tearing or full soft-body physics. A single supported incision unlocks a pre-segmented section. The onion remains stabilized on the platform, and placed concave shells use approximate collision shapes.
 
 A future imported model needs closed removable parts, attachments, cut regions and physical metadata. A frog should be a separate specimen definition. A wand can adapt to the existing input contract. Photograph-to-dissection would first need specimen identification and a prepared anatomical asset; unseen internal anatomy is not reconstructed here.
 
-Chatbot panels, microscopy, quizzes, gesture tracking, n8n, backend services and deployment are deferred.
+Chatbot panels, microscopy, quizzes, wand input, n8n, backend services and deployment are deferred.
 
 ## Reference onion model
 

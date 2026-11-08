@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scalpless · Gesture lab</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+  <header><a class="brand" href="/">✳ Scalpless <span>GESTURE LAB</span></a><span class="local">● Processed on your device</span></header>
+  <main>
+    <div class="intro"><p class="eyebrow">VIRTUAL LAB / PRACTICE SANDBOX</p><h1>Grab. Move. Make your first cut.</h1><p>Place the cube in the tray, then trace the practice pad with your scalpel.</p></div>
+    <section class="sandbox-controls" aria-label="Sandbox controls"><label>Input <select id="input-source"><option value="mouse" selected>Mouse / keyboard</option><option value="webcam">Webcam gestures</option></select></label><button id="use-webcam" type="button">Use webcam pinch</button><div id="mouse-tools"><button id="tool-hand" type="button" aria-pressed="true">Hand · H</button><button id="tool-scalpel" type="button" aria-pressed="false">Scalpel · S</button><label>Height <input id="mouse-height" type="range" min="0" max="1" step="0.005" value="0.11"><output id="mouse-height-value">11%</output></label></div><button id="reset-sandbox" type="button">Reset practice</button><p id="sandbox-controls-help">Drag the cube with Hand. Adjust Height while dragging to lift it. Select Scalpel and drag along the dotted line. Wheel or +/− to zoom; arrow keys change height.</p></section>
+    <section class="sandbox-progress" aria-label="Practice progress"><div id="grab-task"><b>01 / GRAB + PLACE</b><span>Drop the cube inside the tray</span></div><div id="cut-task"><b>02 / PRACTICE CUT</b><span id="cut-progress-label">Trace the guide · 0%</span><progress id="cut-progress" max="100" value="0" aria-label="Cut guide coverage"></progress><span id="cut-feedback" data-state="hover">Scalpel snaps onto the pad when nearby</span></div><p id="sandbox-status" role="status">Grab the cube and drop it in the tray.</p></section>
+    <section class="camera-setup"><label>Camera position <select id="camera-mode"><option value="flat" selected>Flat on desk, lens facing up</option><option value="front">Facing you</option></select></label><label>Camera rotation <select id="camera-rotation"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></label><button id="reset-hand-size" type="button">Set neutral hand size</button><p id="setup-help">Place the camera lens-up below your hands. Keep palms down with fingers pointing away from you. Closer to the lens makes the hand larger; farther makes it smaller.</p></section>
+    <div class="layout">
+      <section class="virtual-panel" aria-label="Virtual hands">
+        <div class="panel-top"><span>PRACTICE WORKSPACE / LIVE 3D</span><label><input id="angle" type="checkbox"> Angled view</label></div>
+        <div id="hands-stage"><div id="hands-hint">Start the camera to control your virtual hands.</div><span class="virtual-label">MINT + SAND / TWO-HAND TRACKING</span></div>
+        <div class="virtual-bottom"><span id="hands-status" role="status">3D view loading...</span><span id="movement-help">Move across the desk: left/right and forward/back</span></div>
+      </section>
+      <section class="camera-panel" aria-label="Live hand tracking">
+        <div class="panel-top"><span><i id="indicator"></i><span id="status" role="status">Camera off</span></span><span id="hand-count">0 hands</span></div>
+        <div class="viewport">
+          <video id="webcam" autoplay playsinline muted></video><canvas id="overlay"></canvas>
+          <div id="placeholder"><div class="camera-icon">◎</div><h2>Ready when you are</h2><p>Start your camera and hold a hand in view.<br>Good lighting helps tracking stay steady.</p></div>
+          <div id="cursor" hidden></div><span class="mirror-label">MIRRORED VIEW</span>
+        </div>
+        <div class="camera-bottom"><span id="message" role="status">Camera access starts only when you choose.</span><button id="toggle">Start camera ↗</button></div>
+      </section>
+      <aside>
+        <section class="readout"><p class="eyebrow">CURRENT GESTURE</p><h2 id="gesture" aria-live="polite">Waiting for camera</h2><p id="gesture-help">Your detected gesture will appear here.</p><progress id="hold" max="1" value="0" aria-label="Scalpel hold progress"></progress><div class="metrics"><span>CURSOR X / Y / Z <strong id="coordinates">— / — / —</strong></span><span>ZOOM <strong id="zoom">100%</strong></span></div><div class="height-readout"><label id="height-label" for="cursor-height">Z height —</label><meter id="cursor-height" min="0" max="1" value="0" aria-label="Cursor height above table"></meter><small>0 = table · 1 = highest range · estimated</small></div></section>
+        <section class="guide"><h2>Try a gesture <span>4 INPUTS</span></h2>
+          <div class="gesture-card" data-kind="move"><b>↖</b><div><h3>Move</h3><p>Move your index fingertip.</p></div></div>
+          <div class="gesture-card" data-kind="pinch"><b>◉</b><div><h3>Pinch to grab</h3><p>Bring thumb and index tips together.</p></div></div>
+          <div class="gesture-card" data-kind="scalpel"><b>╱</b><div><h3>Scalpel</h3><p id="scalpel-instructions">Palm down, extend only your index. Curl middle, ring and pinky. Hold for 0.3 seconds.</p></div></div>
+          <div class="gesture-card" data-kind="zoom"><b>↔</b><div><h3>Two-hand zoom</h3><p>Move both index tips apart or together.</p></div></div>
+        </section>
+      </aside>
+    </div>
+    <section class="settings"><label for="motion-sensitivity">Movement sensitivity <input id="motion-sensitivity" type="range" min="0.75" max="2.5" step="0.05" value="1.5"><output id="motion-sensitivity-value">1.50×</output></label><label for="sensitivity">Gesture sensitivity <input id="sensitivity" type="range" min="0.7" max="1.5" step="0.05" value="1"><output id="sensitivity-value">1.00×</output></label><label><input id="landmarks" type="checkbox" checked> Show hand landmarks</label><p>Video stays in your browser. Model files download on first start.</p></section>
+    <section class="tracking-assist"><label><input id="assist" type="checkbox" checked> Occlusion assistance</label><p id="tracking-tip" role="status">Keep your real fingers upright or diagonal; virtual hands still reach over the table.</p><p>For a desk setup, place an external webcam above and to the side of your hands, so the joints stay visible. You can control the virtual hands without pointing your real fingers at the lens.</p></section>
+    <details><summary>Live event inspector <span id="event-count">0 events</span></summary><pre id="events">Waiting for input events…</pre></details>
+  </main>
+  <footer>SCALPLESS / INPUT EXPERIMENT <span>Webcam + MediaPipe Hand Landmarker</span></footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

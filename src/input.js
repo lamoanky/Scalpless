@@ -4,6 +4,11 @@ export function installInput(lab, bench) {
   const canvas = bench.renderer.domElement;
   let active = null,
     right = false;
+  let source = "pointer",
+    onTakeover = () => {};
+  const takeOver = () => {
+    if (source === "webcam") onTakeover();
+  };
   const detail = (e) => {
     const r = canvas.getBoundingClientRect();
     return {
@@ -15,7 +20,23 @@ export function installInput(lab, bench) {
   const send = (type, data = {}) =>
     window.dispatchEvent(new CustomEvent(type, { detail: data }));
   const handlers = {
-    "input:move": (e) => lab.move(e.detail || {}),
+    "input:move": (e) => {
+      if (e.detail?.lost) {
+        lab.hover = null;
+        bench.restTools();
+      } else {
+        // A sustained webcam pinch can acquire tissue as its cursor reaches it,
+        // matching the gesture branch's pickup behavior. Mouse grabs stay exact.
+        if (
+          e.detail?.source === "webcam" &&
+          e.detail.mode === "hand" &&
+          !lab.held &&
+          lab.cutOpen
+        )
+          lab.beginGrab(e.detail);
+        lab.move(e.detail || {});
+      }
+    },
     "input:pinchstart": (e) => {
       if (lab.tool !== "hand") lab.setTool("hand");
       lab.beginGrab(e.detail || {});
@@ -31,11 +52,18 @@ export function installInput(lab, bench) {
         bench.zoom(Math.max(-2, Math.min(2, e.detail.delta)));
     },
   };
-  INPUT_EVENTS.forEach((type) => window.addEventListener(type, handlers[type]));
+  INPUT_EVENTS.forEach((type) =>
+    window.addEventListener(type, (event) => {
+      const webcam = event.detail?.source === "webcam";
+      if (webcam !== (source === "webcam")) return;
+      handlers[type](event);
+    }),
+  );
   // Capture phase establishes tool ownership before OrbitControls sees a pointer.
   canvas.addEventListener(
     "pointerdown",
     (e) => {
+      takeOver();
       if (e.button === 2) {
         right = true;
         return;
@@ -78,6 +106,7 @@ export function installInput(lab, bench) {
       canvas.releasePointerCapture(e.pointerId);
   });
   const cancel = () => {
+    takeOver();
     active = null;
     right = false;
     lab.cancel();
@@ -97,6 +126,7 @@ export function installInput(lab, bench) {
     "wheel",
     (e) => {
       e.preventDefault();
+      takeOver();
       send("input:zoom", { delta: -Math.sign(e.deltaY) * 0.6 });
     },
     { passive: false },
@@ -109,6 +139,28 @@ export function installInput(lab, bench) {
     if (e.target.matches("input,select,textarea,[contenteditable=true]"))
       return;
     const key = e.key.toLowerCase();
+    if (
+      [
+        "v",
+        "s",
+        "h",
+        "escape",
+        "r",
+        "+",
+        "=",
+        "-",
+        "q",
+        "e",
+        "arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        "pageup",
+        "pagedown",
+      ].includes(key) ||
+      ((e.ctrlKey || e.metaKey) && key === "z")
+    )
+      takeOver();
     if ((e.ctrlKey || e.metaKey) && key === "z") {
       e.preventDefault();
       lab.undo();
@@ -167,4 +219,20 @@ export function installInput(lab, bench) {
       }
     }
   });
+  return {
+    get source() {
+      return source;
+    },
+    setSource(next) {
+      if (next === source) return;
+      lab.endCut();
+      lab.endGrab();
+      active = null;
+      right = false;
+      source = next;
+    },
+    onTakeover(callback) {
+      onTakeover = callback;
+    },
+  };
 }

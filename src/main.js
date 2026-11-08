@@ -4,6 +4,7 @@ import { createOnion } from "./specimens/onion.js";
 import { createPhysics } from "./physics.js";
 import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
+import { installHandTracking } from "./hand-tracking.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -113,7 +114,8 @@ try {
     physics = await createPhysics(),
     lab = new LabController(bench, onion, physics);
   bench.setSpecimen(onion);
-  installInput(lab, bench);
+  const input = installInput(lab, bench);
+  const handTracking = installHandTracking(bench, input);
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {
       closeMenus();
@@ -291,7 +293,8 @@ try {
             : state.cutOpen
               ? "Grasp an exposed edge and pull gently. Right drag to look around."
               : "Make the incision with the scalpel first.";
-    if (message) $("status").textContent = message;
+    if (message && $("status").textContent !== message)
+      $("status").textContent = message;
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
@@ -333,6 +336,7 @@ try {
           manipulationFrames.reduce((a, b) => a + b, 0)
         : null,
       physicsBodies: physics.bodies.size,
+      handTracking: handTracking.getDebug(),
     }),
   };
 } catch (error) {
