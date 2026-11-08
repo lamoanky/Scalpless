@@ -43,19 +43,25 @@ export function createLandingScene(bench, specimen) {
   const skyContext=sky.getContext('2d'),skyGradient=skyContext.createRadialGradient(275,240,5,256,256,350);
   skyGradient.addColorStop(0,'#d1e5ff');skyGradient.addColorStop(.5,'#a8c9fa');skyGradient.addColorStop(1,'#96b5ed');
   skyContext.fillStyle=skyGradient;skyContext.fillRect(0,0,512,512);
-  world.background=new THREE.CanvasTexture(sky);world.background.colorSpace=THREE.SRGBColorSpace;
+  const skyTexture=new THREE.CanvasTexture(sky);skyTexture.colorSpace=THREE.SRGBColorSpace;
+  // Both rooms composite behind the very same specimen. The intro floor and
+  // backdrop fade before entry, restoring the onion bench's real reflections.
+  bench.setPresentationBackdrop(skyTexture,1);
   const {group:frog,variant,pattern}=createLandingFrog();
   const floor=new Reflector(new THREE.PlaneGeometry(40,40),{color:0xbedcfa,textureWidth:1024,textureHeight:1024,multisample:0,clipBias:.003});
   floor.rotation.x=-Math.PI/2;floor.position.y=-.035;scene.add(floor);
   // Frosted reflection fades into the same sky at the horizon. Sample the
   // reflected image locally instead of rendering another blur-pass chain.
-  floor.material.uniforms.skyMap={value:world.background};
+  floor.material.uniforms.skyMap={value:skyTexture};
+  floor.material.uniforms.roomOpacity={value:1};
+  floor.material.transparent=true;
+  floor.material.depthWrite=false;
   floor.material.vertexShader=floor.material.vertexShader
     .replace('varying vec4 vUv;','varying vec4 vUv; varying vec4 floorClip; varying vec3 floorWorld;')
     .replace('#include <logdepthbuf_vertex>',`floorClip=gl_Position;
       floorWorld=(modelMatrix*vec4(position,1.)).xyz;\n#include <logdepthbuf_vertex>`);
   floor.material.fragmentShader=floor.material.fragmentShader
-    .replace('varying vec4 vUv;','varying vec4 vUv; varying vec4 floorClip; varying vec3 floorWorld; uniform sampler2D skyMap;')
+    .replace('varying vec4 vUv;','varying vec4 vUv; varying vec4 floorClip; varying vec3 floorWorld; uniform sampler2D skyMap; uniform float roomOpacity;')
     .replace('vec4 base = texture2DProj( tDiffuse, vUv );',`vec2 uv=vUv.xy/vUv.w;
       vec2 blur=vec2(.0025,.004);
       vec4 base=texture2D(tDiffuse,uv)*.28;
@@ -66,7 +72,7 @@ export function createLandingScene(bench, specimen) {
     .replace('gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );',`vec2 screenUv=floorClip.xy/floorClip.w*.5+.5;
       vec3 sky=texture2D(skyMap,screenUv).rgb;
       float strength=.45*(1.-smoothstep(3.,15.,length(floorWorld.xz)));
-      gl_FragColor=vec4(mix(sky,base.rgb,strength),1.);`);
+      gl_FragColor=vec4(mix(sky,base.rgb,strength),roomOpacity);`);
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=128;
   const sc=shadowCanvas.getContext('2d'),grad=sc.createRadialGradient(64,64,5,64,64,62);
   grad.addColorStop(0,'rgba(31,69,137,.3)');grad.addColorStop(.5,'rgba(45,84,150,.18)');grad.addColorStop(1,'rgba(45,84,150,0)');
@@ -121,6 +127,11 @@ export function createLandingScene(bench, specimen) {
   let lastFrame=null;
   function update(frame) {
     lastFrame=frame;
+    const room=THREE.MathUtils.smoothstep(frame.platform,.05,.95);
+    floor.visible=room<1;
+    floor.material.uniforms.roomOpacity.value=1-room;
+    bench.environment.reflection.visible=room>0;
+    bench.setPresentationBackdrop(skyTexture,1-room);
     specimen.setPresentationPose?.(frame.pose);
     const mobile=bench.host.clientWidth<700;
     const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),mobile?2.7:2.1);
@@ -169,6 +180,9 @@ export function createLandingScene(bench, specimen) {
     }
   }
   function finish() {
+    floor.visible=false;
+    bench.environment.reflection.visible=true;
+    bench.setPresentationBackdrop(null,0);
     specimenRoot.matrix.identity();specimenRoot.matrixWorldNeedsUpdate=true;
     bench.environment.platform.visible=true;bench.environment.platform.position.y=0;
     for(const [tool,position] of instrumentPositions){tool.visible=true;tool.position.copy(position);}
@@ -179,6 +193,8 @@ export function createLandingScene(bench, specimen) {
     meshIds,appearance:specimen.appearance,pose:lastFrame?.pose??0,
     rootMatrix:specimenRoot.matrix.toArray(),camera:camera.position.toArray(),
     platformY:bench.environment.platform.position.y,
+    labReflection:bench.environment.reflection.visible,
+    introFloor:floor.visible,
     sameMeshes:meshIds.every(id=>world.getObjectByProperty('uuid',id)),
   })};
 }

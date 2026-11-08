@@ -40,6 +40,8 @@ try {
   assert.deepEqual(landed.meshIds,initial.meshIds,'No frog mesh was replaced during rotation');
   assert.deepEqual(landed.rootMatrix,[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
   assert.equal(landed.platformY,0);
+  assert.equal(landed.labReflection,true,'Entry restores the shared reflective laboratory');
+  assert.equal(landed.introFloor,false,'The presentation floor clears before interaction');
   assert.equal(await page.locator('.lab-reveal').evaluate(e=>e.inert),false);
   assert.equal(await lab().evaluate(()=>window.__scalpless.getDebug().state.specimen),'frog');
   assert.equal(await lab().evaluate(()=>window.__scalpless.getDebug().state.cut),0);

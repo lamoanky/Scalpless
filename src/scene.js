@@ -283,6 +283,7 @@ export async function createBench(host, view = {}) {
   return {
     scene,
     environment,
+    setPresentationBackdrop: pipeline.setPresentationBackdrop,
     render,
     setSpecimen(specimen) {
       contactShadows.setSpecimen(specimen);
