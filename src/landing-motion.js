@@ -4,10 +4,12 @@ const ease=(a,b,p)=>{const t=clamp((p-a)/(b-a));return t*t*(3-2*t);};
 // Scrolling previews only the Blender frog. Entry is a separate, button-driven
 // timeline, so reaching the bottom can never switch models or unlock the lab.
 export function landingFrame(progress,{still=false,entry=0}={}) {
-  const p=clamp(progress),e=clamp(entry),jump=Number(e>0);
+  const p=clamp(progress),e=clamp(entry);
   // Staged entry: the platform rises first, then the frog hops onto it with a
   // pirouette while the camera glides in; the live specimen takes over last.
-  const stage=(a,b)=>still?jump:ease(a,b,e);
+  // The entry is click-triggered and brief, so it animates even with reduced
+  // motion; only the scroll-driven preview stays still.
+  const stage=(a,b)=>ease(a,b,e);
   return {
     progress:p,
     entryProgress:e,
