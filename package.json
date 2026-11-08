@@ -1,0 +1,6 @@
+{
+  "name": "scalpless-gesture-lab",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.js", "test": "node --test" }
+}

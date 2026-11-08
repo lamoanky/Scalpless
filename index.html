@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scalpless · Gesture lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header><a class="brand" href="/">✳ Scalpless <span>GESTURE LAB</span></a><span class="local">● Processed on your device</span></header>
+  <main>
+    <div class="intro"><p class="eyebrow">COMPUTER VISION / 01</p><h1>Your hands are the interface.</h1><p>Explore the gestures that will power your virtual lab.</p></div>
+    <div class="layout">
+      <section class="camera-panel" aria-label="Live hand tracking">
+        <div class="panel-top"><span><i id="indicator"></i><span id="status" role="status">Camera off</span></span><span id="hand-count">0 hands</span></div>
+        <div class="viewport">
+          <video id="webcam" autoplay playsinline muted></video><canvas id="overlay"></canvas>
+          <div id="placeholder"><div class="camera-icon">◎</div><h2>Ready when you are</h2><p>Start your camera and hold a hand in view.<br>Good lighting helps tracking stay steady.</p></div>
+          <div id="cursor" hidden></div><span class="mirror-label">MIRRORED VIEW</span>
+        </div>
+        <div class="camera-bottom"><span id="message" role="status">Camera access starts only when you choose.</span><button id="toggle">Start camera ↗</button></div>
+      </section>
+      <aside>
+        <section class="readout"><p class="eyebrow">CURRENT GESTURE</p><h2 id="gesture" aria-live="polite">Waiting for camera</h2><p id="gesture-help">Your detected gesture will appear here.</p><progress id="hold" max="1" value="0" aria-label="Scalpel hold progress"></progress><div class="metrics"><span>CURSOR <strong id="coordinates">— , —</strong></span><span>ZOOM <strong id="zoom">100%</strong></span></div></section>
+        <section class="guide"><h2>Try a gesture <span>4 INPUTS</span></h2>
+          <div class="gesture-card" data-kind="move"><b>↖</b><div><h3>Move</h3><p>Move your index fingertip.</p></div></div>
+          <div class="gesture-card" data-kind="pinch"><b>◉</b><div><h3>Pinch to grab</h3><p>Bring thumb and index tips together.</p></div></div>
+          <div class="gesture-card" data-kind="scalpel"><b>╱</b><div><h3>Scalpel</h3><p>Point your index, curl the other fingers.<br>Hold for 0.3 seconds.</p></div></div>
+          <div class="gesture-card" data-kind="zoom"><b>↔</b><div><h3>Two-hand zoom</h3><p>Move both index tips apart or together.</p></div></div>
+        </section>
+      </aside>
+    </div>
+    <section class="settings"><label for="sensitivity">Gesture sensitivity <input id="sensitivity" type="range" min="0.7" max="1.5" step="0.05" value="1"><output id="sensitivity-value">1.00×</output></label><label><input id="landmarks" type="checkbox" checked> Show hand landmarks</label><p>Video stays in your browser. Model files download on first start.</p></section>
+    <details><summary>Live event inspector <span id="event-count">0 events</span></summary><pre id="events">Waiting for input events…</pre></details>
+  </main>
+  <footer>SCALPLESS / INPUT EXPERIMENT <span>Webcam + MediaPipe Hand Landmarker</span></footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
