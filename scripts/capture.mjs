@@ -30,7 +30,10 @@ page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
-const url = process.env.PREVIEW_URL || "http://127.0.0.1:5173";
+const url = new URL(
+  "./lab.html",
+  process.env.PREVIEW_URL || "http://127.0.0.1:5173/",
+).href;
 await page.goto(url);
 await page.waitForFunction(
   () => document.documentElement.dataset.ready === "true",

@@ -11,7 +11,9 @@
     "test": "node --test tests/*.test.js",
     "test:browser": "node scripts/capture.mjs --check",
     "model:export": "node scripts/export-onion.mjs",
-    "model:preview": "node scripts/preview-onion-model.mjs"
+    "model:preview": "node scripts/preview-onion-model.mjs",
+    "test:landing": "node scripts/check-landing.mjs",
+    "capture:landing": "node scripts/capture-landing.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

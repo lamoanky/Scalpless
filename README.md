@@ -1,6 +1,6 @@
 # Scalpless
 
-A hands-on 3D onion dissection bench. The specimen, platform and instruments are rendered meshes, with direct surface contact, constrained peeling, and Rapier collisions for released tissue. Built with Vite, vanilla JavaScript and Three.js.
+A scroll-driven landing page and hands-on 3D onion dissection bench. The specimen, platform and instruments are rendered meshes, with direct surface contact, constrained peeling, and Rapier collisions for released tissue. Built with Vite, vanilla JavaScript and Three.js.
 
 ## Run
 
@@ -11,7 +11,15 @@ npm install
 npm run dev -- --port 5173
 ```
 
-Open http://127.0.0.1:5173. Keep the terminal running while using the bench.
+Open http://127.0.0.1:5173 for the landing page. **Start Dissection** and **Get Started** open the intact bench at http://127.0.0.1:5173/lab.html. Keep the terminal running while using the app. The production build includes both entry pages.
+
+## Landing page
+
+Scroll through three stages: a cropped onion close-up, a full cutaway with orbit lines, and a specimen collection. The same live 3D onion gets smaller and completes two rotations as the scroll advances. Scrolling back reverses the motion. All movement derives from scroll position; there is no automatic tour.
+
+The landing page reuses the specimen geometry, 4K textures, local HDRI and blue lab backdrop. Its framing and material adjustments affect only the landing instance. The lab still starts intact. Onion is the available specimen; Frog and Microscopy are explicitly marked as coming later.
+
+The page adapts to narrow screens, uses native navigation links and FAQ disclosures, and respects reduced-motion preferences. **Motion on/off** switches between animated framing and a static specimen while keeping all three sections accessible.
 
 ## Working at the bench
 
@@ -37,7 +45,8 @@ There are no timing challenges. Controls have 48 px minimum targets, visible foc
 - `src/contact-shadows.js`: live height-weighted, blurred contact occlusion from deformed specimen meshes.
 - `src/lab-environment.js`: transparent reflection/shadow catchers and a two-tier white/cyan platform; shared platform bounds keep rendering and collisions aligned.
 - `src/domain.js`: cut coverage and snapshot history independent of rendering.
-- `src/main.js`, `index.html`, `src/style.css`: bootstrap, render loop and compact accessible controls.
+- `src/main.js`, `lab.html`, `src/style.css`: bench bootstrap, render loop and compact accessible controls.
+- `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: scroll scene, deterministic framing, landing content and responsive styles.
 
 The specimen stays stationary during cutting. Attached tissue is deformed around its basal attachment with bounded displacement; separation progress is stored separately from its current bend. A detached shell retains its shape and becomes a rigid body. Collision geometry approximates its volume using smaller convex patches to preserve concavity. Held pieces follow constrained targets; release transfers them back to simulation with restrained motion.
 
@@ -65,14 +74,16 @@ Start events select the corresponding tool. Move events update contact or the he
 Start the local server, then:
 
 ```sh
-npm test                  # coverage, invalid contacts, threshold and undo tests
+npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
+npm run test:landing      # scroll, navigation, lab entry and mobile checks
 npx playwright install ffmpeg # once, for video recording
 npm run capture           # PNGs and a recorded cut–peel–place walkthrough
+npm run capture:landing   # recorded landing-page scroll walkthrough
 ```
 
-Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`.
+Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Landing checks default to port 4173 (the production preview); bench checks and captures default to port 5173. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`. Landing outputs include `landing-hero.png`, `landing-explore.png`, `landing-collection.png`, mobile views, `landing-validation.json` and `scalpless-landing-scroll.webm`.
 
 Browser checks verify the absence of visible interface text and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
 
