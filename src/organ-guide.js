@@ -39,6 +39,14 @@ export function heldOrgan(state) {
     ? state.held : null;
 }
 
+// Completed collections live in controller snapshots, so undo/reset restore
+// the previous study as well as the actual specimen.
+export function studyOrgan(state) {
+  return heldOrgan(state) ?? (state.specimen === "frog" &&
+    state.pieces?.[state.lastCollected]?.collected &&
+    Object.hasOwn(ORGAN_GUIDE, state.lastCollected) ? state.lastCollected : null);
+}
+
 // Only these coarse fields may leave the lab when a question is submitted.
 // No positions, video, landmarks, URLs, identifiers or credentials are included.
 export function teachingContext(state) {

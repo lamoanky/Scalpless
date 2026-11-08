@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { heldOrgan, teachingContext, ORGAN_GUIDE } from "../src/organ-guide.js";
+import { heldOrgan, studyOrgan, teachingContext, ORGAN_GUIDE } from "../src/organ-guide.js";
 
 test("only a held detached frog organ opens the study", () => {
   const state = {specimen:"frog", held:"heart", pieces:{heart:{detached:true}}};
@@ -23,4 +23,17 @@ test("teaching context is a coarse allowlist, never a debug or camera dump", () 
   assert.deepEqual(state,before);
   assert.equal(teachingContext({...state,cutOpen:false,cut:.4}).incision,"partial");
   assert.equal(teachingContext({...state,cutOpen:false,cut:0}).incision,"intact");
+});
+
+test("study follows the held organ, then the last completed collection", () => {
+  const collected = {specimen:"frog", held:null, lastCollected:"liver",
+    pieces:{liver:{detached:true,collected:true},heart:{detached:false,collected:false}}};
+  assert.equal(studyOrgan(collected),"liver");
+  assert.equal(studyOrgan({...collected,held:"heart",
+    pieces:{...collected.pieces,heart:{detached:true,collected:false}}}),"heart");
+  assert.equal(studyOrgan({...collected,held:"abdomen"}),"liver");
+  assert.equal(studyOrgan({...collected,lastCollected:null}),null,"Reset clears the study");
+  assert.equal(studyOrgan({...collected,pieces:{liver:{detached:false,collected:false}}}),null,"Restored attachments cannot leave a stale study");
+  assert.equal(studyOrgan({...collected,specimen:"onion"}),null);
+  assert.equal(studyOrgan({...collected,lastCollected:"abdomen",pieces:{abdomen:{detached:true,collected:true}}}),null);
 });

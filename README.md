@@ -79,7 +79,7 @@ The original gesture sandbox is preserved at `npm run gesture:sandbox` → http:
 - `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: reversible scroll presentation, input handoff and responsive icon controls.
 - `src/landing-scene.js`, `src/landing-frog.js`: shared blue exterior, shoulder/hip posing, glass displays, procedural textures and reflected floor.
 - `src/landing-presentation.js`: validates parent messages, applies scroll presentation and releases input/physics after the final pose. Controller actions and camera controls remain unchanged after entry.
-- `src/organ-slide.js`, `src/organ-guide.js`: independent held-organ study view and concise anatomy/context metadata.
+- `src/organ-slide.js`, `src/organ-guide.js`: independent held/collected-organ study view and concise anatomy/context metadata.
 - `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: optional chat UI, session-only credentials/cancellation and bounded Gemini transport.
 - `server/tutor.mjs`: optional loopback teaching proxy; no client credentials or camera data are accepted.
 
@@ -91,7 +91,9 @@ The original supplied design is preserved in `design/reference.png`. Runtime geo
 
 Picking up a detached frog heart, liver, lung, stomach or intestine opens a small glass study slide. It shows the actual organ geometry, its name, function and an observation prompt. Drag the study view or focus it and use the arrow keys to rotate the study; Home restores its angle. This is a gross-anatomy 3D view, not microscopic tissue imagery.
 
-The live organ stays in your forceps. The slide is a read-only clone rendered through the existing WebGL renderer; it is never added to Rapier or the picking hierarchy. Place, release, cancel, undo and reset dismiss it immediately. Minimize it with its close button and reopen it with the slide icon while the organ is held. Opening the study never steals focus during a drag.
+The live organ stays in your forceps until you drop it or use Place on bench. Releasing an organ removes it from the bench, picking and physics, while its information and rotatable study stay open. Picking up another organ updates the slide. The abdominal panel and onion tissue still settle physically on the bench.
+
+The slide is a read-only clone rendered through the existing WebGL renderer; it is never added to Rapier or the picking hierarchy. Undo restores the removed organ and the previous study; cancelling a new grab also restores the previous study. Reset returns every organ and clears the slide. Minimize it with its close button and reopen it with the slide icon, including after release. Opening the study never steals focus during a drag.
 
 The four-arrow button beside the tissue actions expands native movement controls. These start collapsed on smaller screens; the existing movement and rotation keyboard shortcuts remain available. Every button retains a 48 px target and visible keyboard focus.
 
@@ -138,11 +140,11 @@ Dispatch `CustomEvent`s on `window`. Coordinates are normalized **0…1 within t
 
 Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning. Camera events add `source: 'webcam'`; they are accepted only while the camera owns input. A tracking-loss move also carries `lost: true` to clear hover feedback. The recognizer's additive `z` is preserved, but the lab controller uses canvas X/Y ray contact and its existing manipulation plane, rather than interpreting monocular height as physical depth.
 
-`lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `selected`, `undo`, `available` and per-piece `detached`, `separation`, `bend`, `direction`. The organ study and teaching panel observe the controller through its subscription interface; future integrations can use this event. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
+`lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `lastCollected`, `selected`, `undo`, `available` and per-piece `detached`, `collected`, `separation`, `bend`, `direction`. Collected organs stay detached but are hidden, excluded from `available` and absent from physics. `lastCollected` identifies the persistent study; it and collection state are included in undo snapshots. The organ study and teaching panel observe the controller through its subscription interface; future integrations can use this event. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
 
 ### Camera vision merge notes
 
-This milestone does **not** change `src/input.js`, `src/onion-hand-input.js`, the `src/hand-*` camera lifecycle/model modules, root gesture recognizers, their six events, or `LabController`/Rapier behavior. Continue sending normalized scene coordinates through the existing adapter; do not target the organ study view as a second lab canvas. The study uses the main renderer's scissor/viewport and restores both after drawing. No additional render loop or WebGL context is introduced.
+The input/camera adapters, root gesture recognizers, six events and Rapier implementation are unchanged. The controller now collects frog organs on release, including `input:pinchend`; adapters do not need separate collection logic. Tracking-loss release follows the same rule and remains undoable. Continue sending normalized scene coordinates through the existing adapter; do not target the organ study view as a second lab canvas. The study uses the main renderer's scissor/viewport and restores both after drawing. No additional render loop or WebGL context is introduced.
 
 The new panels subscribe to lab state. Chat fields and study rotation consume their own keyboard input so shortcut letters and arrows cannot cut, reset, rotate or move tissue while typing/inspecting a study. The new UI never starts or stops the camera. Only the **setup panel** is closed when switching between camera settings and chat; a running tracking session continues. Existing deliberate scene/tool input still takes ownership through the camera adapter. Panel visibility is coordinated in `main.js` by observing `#hand-tracking-panel`; keep that ID and `#tracking-close` or update the observer if the incoming branch changes its UI.
 

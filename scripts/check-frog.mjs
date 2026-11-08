@@ -220,16 +220,21 @@ try {
         window.dispatchEvent(new CustomEvent("input:pinchend", { detail: {} })),
       );
     await page.waitForTimeout(450);
-    assert.equal((await debug()).organStudy.id,null,"Releasing clears the study without retaining tissue");
-    assert((await debug()).state.pieces[id].detached);
+    const dropped = await debug();
+    assert.equal(dropped.organStudy.id,id,"Release keeps the last organ study open");
+    assert.equal(dropped.organStudy.visible,true);
+    assert(dropped.state.pieces[id].detached && dropped.state.pieces[id].collected);
+    assert.equal(dropped.visibility[id],false);
+    assert.equal(dropped.physicalPieces[id],undefined);
+    assert(!dropped.state.available.some(p=>p.id===id));
     if (id === "liver")
       assert((await debug()).state.available.some((p) => p.id === "stomach"));
   }
   await page.waitForTimeout(1500);
   let state = await debug();
-  assert.equal(state.physicsBodies, 7);
+  assert.equal(state.physicsBodies, 1,"Only the released abdominal panel remains on the bench");
   for (const [id, bounds] of Object.entries(state.geometryBounds))
-    assert(bounds.min[1] > -0.007, `${id} geometry stays on the physical bench`);
+    if (state.visibility[id]) assert(bounds.min[1] > -0.007, `${id} geometry stays on the physical bench`);
   await tool("inspect");
   await page.screenshot({ path: "output/frog-dissected.png" });
   await page.locator("#scene").focus();

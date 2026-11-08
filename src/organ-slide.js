@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { ORGAN_GUIDE, heldOrgan } from "./organ-guide.js";
+import { ORGAN_GUIDE, studyOrgan } from "./organ-guide.js";
 import "./lab-panels.css";
 
 const closeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>';
@@ -19,7 +19,7 @@ export function installOrganSlide(lab, bench) {
     <div class="slide-copy"><p id="organ-system" class="slide-system"></p><p id="organ-description"></p><p id="organ-observe" class="slide-observe"></p><span class="slide-note">3D study · tissue stays in your forceps</span></div>`;
   const restore = document.createElement("button");
   restore.type = "button"; restore.className = "icon-button study-launch"; restore.hidden = true;
-  restore.setAttribute("aria-label", "Open held organ study"); restore.setAttribute("aria-controls", panel.id);
+  restore.setAttribute("aria-label", "Open organ study"); restore.setAttribute("aria-controls", panel.id);
   restore.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v10M10 11h7m-7 3h4"/></svg>';
   document.getElementById("bench").append(panel, restore);
   const view = panel.querySelector(".slide-preview");
@@ -58,7 +58,7 @@ export function installOrganSlide(lab, bench) {
     document.getElementById("bench").classList.toggle("has-organ-study", show);
   }
   function update(state) {
-    const next = heldOrgan(state);
+    const next = studyOrgan(state);
     if (next !== id) {
       if (clone) orientation.remove(clone);
       clone = null; source = null; id = next; minimized = false; yaw = pitch = 0;
@@ -70,14 +70,21 @@ export function installOrganSlide(lab, bench) {
           panel.querySelector(`#organ-${key}`).textContent = value;
         source = lab.specimen.parts.get(id).group;
         const part = source.clone(true);
+        part.visible = true; // A collected source is hidden only in the bench.
         part.position.set(0,0,0); part.quaternion.identity(); part.updateMatrixWorld(true);
         const bounds = new THREE.Box3().setFromObject(part), size = bounds.getSize(new THREE.Vector3());
         part.position.copy(bounds.getCenter(new THREE.Vector3())).negate();
         clone = new THREE.Group(); clone.add(part);
         clone.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z, .0001));
         orientation.add(clone);
-        view.setAttribute("aria-label", `${info.name} study. Drag or use arrow keys to rotate this study view. The real tissue stays in your forceps.`);
       }
+    }
+    if (id) {
+      const collected = state.pieces[id].collected;
+      panel.querySelector(".slide-note").textContent = collected
+        ? "3D study · organ removed from the bench"
+        : "3D study · tissue stays in your forceps";
+      view.setAttribute("aria-label", `${ORGAN_GUIDE[id].name} study. Drag or use arrow keys to rotate this study view. ${collected ? "The organ has been removed from the bench." : "The real tissue stays in your forceps."}`);
     }
     visibility();
   }

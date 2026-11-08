@@ -42,3 +42,11 @@ All checks pass: 92 unit tests, production build, onion workflow, natural and bl
 The development app remains available on port 5173, with production preview on 4173. Ignored artifacts include `output/frog-lab-final.png` (3200 × 2000), `output/frog-walkthrough.webm` (46 seconds), organ/chat desktop and mobile screenshots, and `output/final-checks/` logs. The initial final-batch log retains the obsolete assertion failure; the subsequent `onion-recheck.log` contains the passing corrected workflow. No QA images, videos, build output or credentials are committed.
 
 Not externally verified: real Gemini generation/account access (no real key used) and recognition accuracy on a person's webcam. Model anatomy remains the existing simplified educational illustration and needs subject-matter validation before instructional deployment.
+
+## Organ collection after drop
+
+Frog organs now leave the bench, picking and physics when released; the last organ's information and independent 3D study remain open. A newly held organ replaces that study. Collection and the last-study ID belong to controller snapshots, so undo restores the organ and previous study, cancellation preserves the previous collection, and reset clears everything. The abdominal panel and onion retain physical placement. Contact-shadow proxies already respect source visibility, so removed organs leave no shadow behind.
+
+This follow-up narrowly changes LabController release/state handling; the input/camera adapters and Rapier implementation remain untouched. Mouse release, native placement and `input:pinchend` use the same collection path. Tracking-loss release therefore also collects an organ and remains undoable. The README documents the added `collected` and `lastCollected` fields.
+
+Validation: 93 unit tests, production build, full natural/blue frog dissection, onion interaction checks, organ-study checks at desktop/390/320 px, and mocked teaching-chat checks passed. Coverage includes all six organ removals, hidden meshes and absent bodies, liver access after release near its attachment, successive collections, restored study rendering after undo, cancellation and reset. Visually inspected `output/organ-collected-restored-natural.png`; the liver is absent from the bench while its readable study and 3D preview remain visible. No real API request or webcam was used.

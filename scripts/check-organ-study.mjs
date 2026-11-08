@@ -43,11 +43,44 @@ try {
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("#organ-slide").isVisible(),false);
     assert.equal((await debug()).state.held,"liver","Closing a panel does not release tissue");
-    await page.getByRole("button",{name:"Open held organ study"}).click();
-    await page.locator("#place-action").click();
-    assert.equal(await page.locator("#organ-slide").isVisible(),false,"Release removes the study immediately");
+    await page.getByRole("button",{name:"Open organ study"}).click();
+    // Blue releases close to its attachment; collection must still expose
+    // the digestive organs. Natural exercises the explicit place control.
+    await page.locator(appearance==="blue" ? "#primary-action" : "#place-action").click();
+    let dropped=await debug();
+    assert.equal(dropped.state.held,null);
+    assert.equal(dropped.state.lastCollected,"liver");
+    assert.equal(dropped.state.pieces.liver.collected,true);
+    assert.equal(dropped.visibility.liver,false,"Released organ is absent from the bench");
+    assert.equal(dropped.physicalPieces.liver,undefined,"Released organ leaves physics too");
+    assert(!dropped.state.available.some(p=>p.id==="liver"),"Hidden organs cannot be picked up again");
+    assert(dropped.state.available.some(p=>p.id==="stomach"),"Collection exposes the digestive organs");
+    assert.equal(dropped.organStudy.id,"liver");
+    assert.equal(await page.locator("#organ-slide").isVisible(),true,"Release keeps the information panel open");
+    assert.match(await page.locator(".slide-note").textContent(),/removed from the bench/);
+    await preview.focus();await page.keyboard.press("ArrowLeft");
+    assert.deepEqual((await debug()).state,dropped.state,"Collected study rotation is still independent");
+    await page.screenshot({path:`output/organ-collected-${appearance}.png`});
+    await choose("heart");await page.locator("#primary-action").click();
+    assert.equal((await debug()).organStudy.id,"heart","Next organ replaces the previous study");
+    // Release in place, without moving away from the original attachment.
+    await page.locator("#primary-action").click();
+    assert.equal((await debug()).state.pieces.heart.collected,true);
+    await page.locator("#undo").click();
+    dropped=await debug();
+    assert.equal(dropped.visibility.heart,true);
+    assert.equal(dropped.state.pieces.heart.detached,false);
+    assert.equal(dropped.organStudy.id,"liver","Undo restores the previous collected study");
+    assert.equal(dropped.visibility.liver,false);
+    assert.equal(dropped.physicsBodies,1,"Undo does not recreate bodies for collected organs");
+    await page.screenshot({path:`output/organ-collected-restored-${appearance}.png`});
+    await page.locator("#primary-action").click();
+    await page.locator("#undo").click();
+    assert.equal((await debug()).organStudy.id,"liver","Cancelling a new grab preserves the completed collection");
     await page.locator("#undo").click();
     assert.equal((await debug()).state.pieces.liver.detached,false);
+    assert.equal((await debug()).visibility.liver,true);
+    assert.equal((await debug()).organStudy.id,null);
     await page.locator("#primary-action").click();
     assert.equal((await debug()).organStudy.id,"liver");
     await page.locator("#undo").click();
@@ -56,6 +89,7 @@ try {
     await page.locator("#reset").click();
     assert.equal((await debug()).organStudy.id,null);
     assert.equal((await debug()).state.cut,0);
+    assert(Object.values((await debug()).state.pieces).every(p=>!p.collected));
   }
   for (const width of [390,320]) {
     await page.setViewportSize({width,height:844});
@@ -65,8 +99,10 @@ try {
     const box=await page.locator("#organ-slide").boundingBox();assert(box.x>=0&&box.x+box.width<=width);
     await page.screenshot({path:`output/organ-study-mobile-${width}.png`});
     await page.locator("#place-action").click();
+    assert.equal(await page.locator("#organ-slide").isVisible(),true);
+    assert.equal((await debug()).visibility.liver,false);
   }
   assert.deepEqual(errors,[]);
   await writeFile("output/organ-study-validation.json",JSON.stringify({passed:true,errors,appearances:2,mobileWidths:[390,320]},null,2));
-  console.log("Organ study passed: shared renderer, independent view, placement, undo/reset, natural/blue, narrow layouts.");
+  console.log("Organ study passed: independent view, collected organs, persistent panel, repeated removal, undo/reset, natural/blue, narrow layouts.");
 } finally { await browser.close(); }

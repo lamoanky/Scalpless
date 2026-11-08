@@ -64,7 +64,7 @@ try {
   await page.waitForTimeout(1200);assert(!await page.locator("#teaching-messages").innerText().then(text=>text.includes(reply)));
   hold=false;
   await page.locator("#teaching-close").click();assert(await page.locator("#organ-slide").isVisible());
-  await page.locator("#place-action").click();assert(!await page.locator("#organ-slide").isVisible());
+  await page.locator("#place-action").click();assert(await page.locator("#organ-slide").isVisible());
   await chat();await settings();await page.locator("#teaching-forget").click();
   const count=calls.length;await submit("Hello again");assert.equal(calls.length,count);
   for(const width of [390,320]) {

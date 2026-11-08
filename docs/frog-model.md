@@ -15,7 +15,7 @@ Visual reference: [3D Molier's Frog Anatomy Complete Body Transparent Skin](http
 1. Start with the abdominal panel in place. Select the scalpel and enable the lightbulb hint to reveal its oval incision. Short strokes accumulate to the same 90% coverage threshold as the onion. The native trace button provides a keyboard equivalent.
 2. Use forceps to lift and move the panel. It stays where you manipulate it; release returns it to Rapier simulation.
 3. Inspect and remove the heart, three-lobed liver, left lung and right lung. Moving the liver away makes the stomach and intestines selectable.
-4. Carry and rotate each piece, release it on the bench, or use the place button. Undo restores the previous operation. Reset restores all attachments, the intact panel, and the working camera.
+4. Carry and rotate each organ, then release it or use the place button. It disappears from the bench and physics while its information and rotatable study remain open. The abdominal panel still settles physically. Undo returns the organ and restores the previous study. Reset restores all attachments, the intact panel, and the working camera, and clears the study.
 
 Each removable organ is a pre-separated rigid piece. Grasping an accessible organ releases its attachment. The panel combines the skin and abdominal wall; arbitrary incisions, pinning multiple flaps, and cutting vessels or connective tissue are not simulated. Vessel and mesenteric details are attached visual geometry. The simplified organ shapes and their placement need subject-matter review before instructional use. Optional webcam controls share the same controller and six `input:*` events; physical-hand accuracy requires a live camera check.
 

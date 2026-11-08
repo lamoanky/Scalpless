@@ -51,6 +51,7 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
       initialPosition: FROG_ORIGIN.clone(),
       layer: null,
       interaction: "lift",
+      collectOnRelease: FROG_ORGANS.includes(id),
       fixed,
       grasp: new THREE.Vector3(...grasp),
       color,
@@ -717,6 +718,7 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
 
   const moved = (id, states) => {
     if (!states[id].detached) return false;
+    if (states[id].collected) return true;
     const p = parts.get(id);
     // A tall blue cover can tip onto its side while its local origin returns
     // near the body. Measure the actual tissue point, not that off-mesh origin.
@@ -752,7 +754,8 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
         ids.push("heart", "liver", "lung-left", "lung-right");
         if (moved("liver", states)) ids.push("stomach", "intestines");
       }
-      // Removed parts remain selectable even if the cover is placed back.
+      // Held parts remain selectable even if the cover is placed back.
+      // The controller excludes collected organs after release.
       for (const id of FROG_ORGANS)
         if (states[id].detached && !ids.includes(id)) ids.push(id);
       return ids.map((id) => parts.get(id));
