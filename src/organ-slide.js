@@ -15,7 +15,7 @@ export function installOrganSlide(lab, bench) {
   panel.innerHTML = `
     <header class="slide-heading"><div><span class="panel-eyebrow">SPECIMEN STUDY <span id="organ-number"></span></span><h2 id="organ-name"></h2></div>
       <button type="button" class="icon-button" aria-label="Minimize organ study">${closeIcon}</button></header>
-    <div class="slide-preview" tabindex="0" role="img" aria-label="Organ study. Drag or use arrow keys to rotate this study view."><span class="slide-etch" aria-hidden="true"></span></div>
+    <div class="slide-preview" tabindex="0" role="img" aria-label="Organ study. Drag or use arrow keys to rotate this study view."><span class="slide-etch" aria-hidden="true"><svg viewBox="0 0 300 150" preserveAspectRatio="none"><rect class="preview-rim" x="1" y="1" width="298" height="148" rx="12"/><path class="preview-corners" d="M13 27V14H26M274 14H287V27M287 123V136H274M26 136H13V123"/></svg></span></div>
     <div class="slide-copy"><p id="organ-system" class="slide-system"></p><p id="organ-description"></p><p id="organ-observe" class="slide-observe"></p><span class="slide-note">3D study · tissue stays in your forceps</span></div>`;
   const restore = document.createElement("button");
   restore.type = "button"; restore.className = "icon-button study-launch"; restore.hidden = true;
@@ -24,7 +24,7 @@ export function installOrganSlide(lab, bench) {
   document.getElementById("bench").append(panel, restore);
   const view = panel.querySelector(".slide-preview");
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#dfedfa");
+  scene.background = null; // Preserve the live liquid-glass backdrop under the study.
   scene.environment = bench.scene.environment;
   scene.environmentIntensity = .75;
   scene.add(new THREE.HemisphereLight("#ffffff", "#8ea8c6", 1));
@@ -33,10 +33,15 @@ export function installOrganSlide(lab, bench) {
   const camera = new THREE.PerspectiveCamera(35, 1, .05, 20);
   camera.position.set(0, 2.8, 3.8); camera.lookAt(0, -.2, 0); camera.zoom=1.25;
   const glass = new THREE.Mesh(new RoundedBoxGeometry(2.9, .075, 1.65, 3, .04),
-    new THREE.MeshPhysicalMaterial({color: "#a7d8ef", transparent: true, opacity: .55, roughness: .2, metalness: .12, clearcoat: 1}));
-  glass.position.y = -.57; scene.add(glass);
-  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(glass.geometry,30),new THREE.LineBasicMaterial({color:"#ffffff",transparent:true,opacity:.8}));
-  edge.position.copy(glass.position);scene.add(edge);
+    new THREE.MeshPhysicalMaterial({color: "#c3e8ff", transparent: true, opacity: .32, roughness: .14, metalness: .12, clearcoat: 1}));
+  glass.position.y = -.57; glass.rotation.y = -.23; scene.add(glass);
+  // The rounded surface has no sharp edges for EdgesGeometry to detect.
+  // Etch its top perimeter explicitly so the transparent slide has thickness.
+  const rimPoints=[[-1.41,-.825],[1.41,-.825],[1.45,-.785],[1.45,.785],
+    [1.41,.825],[-1.41,.825],[-1.45,.785],[-1.45,-.785]];
+  const edge=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(rimPoints.map(([x,z])=>new THREE.Vector3(x,.038,z))),
+    new THREE.LineBasicMaterial({color:"#e5f8ff",transparent:true,opacity:.7}));
+  glass.add(edge);
   const contact=document.createElement("canvas");contact.width=contact.height=64;
   const ctx=contact.getContext("2d"),gradient=ctx.createRadialGradient(32,32,0,32,32,32);
   gradient.addColorStop(0,"#24395065");gradient.addColorStop(1,"#24395000");ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
@@ -132,7 +137,8 @@ export function installOrganSlide(lab, bench) {
       try {
         renderer.setViewport(rect.left-host.left,host.bottom-rect.bottom,rect.width,rect.height);
         renderer.setScissor(rect.left-host.left,host.bottom-rect.bottom,rect.width,rect.height);
-        renderer.setScissorTest(true); renderer.autoClear = true;
+        renderer.setScissorTest(true); renderer.autoClear = false;
+        renderer.clearDepth();
         renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1;
         renderer.render(scene,camera);
       } finally {
