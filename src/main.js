@@ -36,39 +36,76 @@ const paths = {
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
 $("tools").innerHTML = `<div class="tool-group">${[
-  ["inspect", "Inspect (V)"], ["scalpel", "Scalpel (S)"], ["hand", "Forceps (H)"],
-].map(([id, label]) => `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === 'inspect'}">${icon(id)}</button>`).join("")}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
+  ["inspect", "Inspect (V)"],
+  ["scalpel", "Scalpel (S)"],
+  ["hand", "Forceps (H)"],
+]
+  .map(
+    ([id, label]) =>
+      `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === "inspect"}">${icon(id)}</button>`,
+  )
+  .join(
+    "",
+  )}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
   ["camera-angles", "camera", "Camera controls"],
   ["hints", "hints", "Show incision and grasp hints"],
   ["undo", "undo", "Undo last operation (⌘/Ctrl Z)"],
   ["reset", "reset", "Reset bench (R)"],
-].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}" ${id === 'hints' ? 'aria-pressed="false"' : ''}>${icon(i)}</button>`).join("")}</div>`;
+]
+  .map(
+    ([id, i, label]) =>
+      `<button class="icon-button" id="${id}" aria-label="${label}" ${id === "hints" ? 'aria-pressed="false"' : ""}>${icon(i)}</button>`,
+  )
+  .join("")}</div>`;
 const cameraPad = document.createElement("div");
 cameraPad.className = "camera-pad";
 cameraPad.hidden = true;
 cameraPad.id = "camera-pad";
 cameraPad.setAttribute("role", "group");
 cameraPad.setAttribute("aria-label", "Camera controls");
-cameraPad.innerHTML = [
-  ["zoom-out", "minus", "Zoom out (−)"],
-  ["zoom-in", "plus", "Zoom in (+)"],
-  ["home-view", "home", "Return to working view"],
-].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}">${icon(i)}</button>`).join("") + [
-  ["-.15,0", "left", "Orbit left"], ["0,-.12", "up", "Orbit up"],
-  ["0,.12", "down", "Orbit down"], [".15,0", "right", "Orbit right"],
-].map(([value, i, label]) => `<button class="icon-button" data-orbit="${value}" aria-label="${label}">${icon(i)}</button>`).join("");
+cameraPad.innerHTML =
+  [
+    ["zoom-out", "minus", "Zoom out (−)"],
+    ["zoom-in", "plus", "Zoom in (+)"],
+    ["home-view", "home", "Return to working view"],
+  ]
+    .map(
+      ([id, i, label]) =>
+        `<button class="icon-button" id="${id}" aria-label="${label}">${icon(i)}</button>`,
+    )
+    .join("") +
+  [
+    ["-.15,0", "left", "Orbit left"],
+    ["0,-.12", "up", "Orbit up"],
+    ["0,.12", "down", "Orbit down"],
+    [".15,0", "right", "Orbit right"],
+  ]
+    .map(
+      ([value, i, label]) =>
+        `<button class="icon-button" data-orbit="${value}" aria-label="${label}">${icon(i)}</button>`,
+    )
+    .join("");
 document.querySelector(".controls-area").prepend(cameraPad);
 $("camera-angles").setAttribute("aria-expanded", "false");
 $("camera-angles").setAttribute("aria-controls", "camera-pad");
 $("piece-menu").innerHTML = icon("layers");
 $("place-action").innerHTML = icon("place");
 $("manipulation-pad").innerHTML = [
-  ["0,0,-1", "up", "Move away (↑)"], ["0,1,0", "lift", "Lift (Page Up)"],
-  ["rotate-left", "rotateLeft", "Rotate left (Q)"], ["-1,0,0", "left", "Move left (←)"],
-  ["0,0,1", "down", "Move closer (↓)"], ["1,0,0", "right", "Move right (→)"],
-  ["0,-1,0", "lower", "Lower (Page Down)"], ["release", "release", "Release tissue"],
+  ["0,0,-1", "up", "Move away (↑)"],
+  ["0,1,0", "lift", "Lift (Page Up)"],
+  ["rotate-left", "rotateLeft", "Rotate left (Q)"],
+  ["-1,0,0", "left", "Move left (←)"],
+  ["0,0,1", "down", "Move closer (↓)"],
+  ["1,0,0", "right", "Move right (→)"],
+  ["0,-1,0", "lower", "Lower (Page Down)"],
+  ["release", "release", "Release tissue"],
   ["rotate-right", "rotateRight", "Rotate right (E)"],
-].map(([action, i, label]) => `<button class="icon-button" data-move="${action}" aria-label="${label}">${icon(i)}</button>`).join("");
+]
+  .map(
+    ([action, i, label]) =>
+      `<button class="icon-button" data-move="${action}" aria-label="${label}">${icon(i)}</button>`,
+  )
+  .join("");
 
 try {
   const bench = await createBench($("scene")),
@@ -77,14 +114,30 @@ try {
     lab = new LabController(bench, onion, physics);
   bench.setSpecimen(onion);
   installInput(lab, bench);
-  document
-    .querySelectorAll("button[data-tool]")
-    .forEach((button) =>
-      button.addEventListener("click", () => lab.setTool(button.dataset.tool)),
-    );
+  document.querySelectorAll("button[data-tool]").forEach((button) =>
+    button.addEventListener("click", () => {
+      closeMenus();
+      lab.setTool(button.dataset.tool);
+    }),
+  );
   $("zoom-out").onclick = () => bench.zoom(-1);
   $("zoom-in").onclick = () => bench.zoom(1);
-  $("home-view").onclick = () => bench.home();
+  $("home-view").onclick = () => {
+    bench.home();
+    closeMenus();
+  };
+  function closeMenus() {
+    cameraPad.hidden = true;
+    $("camera-angles").setAttribute("aria-expanded", "false");
+    $("piece-picker").hidden = true;
+    $("piece-menu").setAttribute("aria-expanded", "false");
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenus();
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".controls-area,.context-controls")) closeMenus();
+  });
   $("camera-angles").onclick = () => {
     cameraPad.hidden = !cameraPad.hidden;
     $("camera-angles").setAttribute("aria-expanded", String(!cameraPad.hidden));
@@ -96,15 +149,17 @@ try {
   $("hints").onclick = () => lab.toggleHints();
   $("undo").onclick = () => lab.undo();
   $("reset").onclick = () => {
-    cameraPad.hidden = true;
-    $("camera-angles").setAttribute("aria-expanded", "false");
+    closeMenus();
     lab.reset();
   };
   $("piece-menu").onclick = () => {
     $("piece-picker").hidden = !$("piece-picker").hidden;
-    $("piece-menu").setAttribute("aria-expanded", String(!$("piece-picker").hidden));
+    $("piece-menu").setAttribute(
+      "aria-expanded",
+      String(!$("piece-picker").hidden),
+    );
   };
-  $("piece-picker").onclick = e => {
+  $("piece-picker").onclick = (e) => {
     const button = e.target.closest("[data-piece]");
     if (!button) return;
     lab.select(button.dataset.piece);
@@ -123,7 +178,8 @@ try {
       lab.rotateHeld(action === "rotate-left" ? -1 : 1);
     else lab.moveHeld(...action.split(",").map(Number));
   };
-  let optionKey = "", actionKey = "";
+  let optionKey = "",
+    actionKey = "";
   function updateUI(state, message) {
     document
       .querySelectorAll("button[data-tool]")
@@ -151,22 +207,44 @@ try {
       $("piece-select").replaceChildren(
         ...state.available.map((p) => new Option(p.label, p.id)),
       );
-      $("piece-picker").replaceChildren(...state.available.map(p => {
-        const button = document.createElement("button");
-        button.className = "icon-button tissue-choice";
-        button.dataset.piece = p.id;
-        button.setAttribute("aria-label", p.label);
-        button.innerHTML = icon(p.id === "section" ? "section" : p.id === "epidermis" ? "membrane" : "layers");
-        // A progressively lighter pigment identifies deeper fleshy layers visually.
-        const layer = Number(p.id.split("-")[1]);
-        if (Number.isFinite(layer)) button.style.setProperty("--tissue", `hsl(305 32% ${34 + layer * 5}%)`);
-        return button;
-      }));
+      $("piece-picker").replaceChildren(
+        ...state.available.map((p) => {
+          const button = document.createElement("button");
+          button.className = "icon-button tissue-choice";
+          button.dataset.piece = p.id;
+          button.setAttribute("aria-label", p.label);
+          button.innerHTML = icon(
+            p.id === "section"
+              ? "section"
+              : p.id === "epidermis"
+                ? "membrane"
+                : "layers",
+          );
+          // A progressively lighter pigment identifies deeper fleshy layers visually.
+          const layer = Number(p.id.split("-")[1]);
+          if (Number.isFinite(layer))
+            button.style.setProperty(
+              "--tissue",
+              `hsl(305 32% ${34 + layer * 5}%)`,
+            );
+          return button;
+        }),
+      );
       optionKey = key;
     }
     $("piece-select").value = state.selected;
-    $("piece-picker").querySelectorAll("[data-piece]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.piece === state.selected)));
-    $("cut-progress").setAttribute("aria-valuenow", String(Math.round(state.cut * 100)));
+    $("piece-picker")
+      .querySelectorAll("[data-piece]")
+      .forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.piece === state.selected),
+        ),
+      );
+    $("cut-progress").setAttribute(
+      "aria-valuenow",
+      String(Math.round(state.cut * 100)),
+    );
     const detached = state.held && state.pieces[state.held].detached;
     const actionLabel =
       state.tool === "scalpel"
@@ -181,7 +259,16 @@ try {
               state.pieces[state.selected]?.detached
             ? "Lift selected piece"
             : "Grasp & peel";
-    const actionIcon = state.tool === "scalpel" ? (state.cutOpen ? "hand" : "scalpel") : state.held ? (detached ? "release" : "peel") : "lift";
+    const actionIcon =
+      state.tool === "scalpel"
+        ? state.cutOpen
+          ? "hand"
+          : "scalpel"
+        : state.held
+          ? detached
+            ? "release"
+            : "peel"
+          : "lift";
     $("primary-action").setAttribute("aria-label", actionLabel);
     if (actionKey !== actionIcon) {
       $("primary-action").innerHTML = icon(actionIcon);

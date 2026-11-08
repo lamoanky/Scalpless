@@ -39,6 +39,45 @@ await page.waitForTimeout(800);
 const debug = () => page.evaluate(() => window.__scalpless.getDebug());
 const tool = (id) => page.locator(`button[data-tool="${id}"]`).click();
 const reset = () => page.locator("#reset").click();
+async function homeView() {
+  if (!(await page.locator("#camera-pad").isVisible()))
+    await page.locator("#camera-angles").click();
+  await page.locator("#home-view").click();
+}
+async function choosePiece(id) {
+  if (!(await page.locator("#piece-picker").isVisible()))
+    await page.locator("#piece-menu").click();
+  await page.locator(`[data-piece="${id}"]`).click();
+}
+async function checkIconInterface() {
+  const issues = await page.evaluate(() => {
+    const visibleText = [];
+    const walker = document.createTreeWalker(
+      document.querySelector("#bench"),
+      NodeFilter.SHOW_TEXT,
+    );
+    for (let node; (node = walker.nextNode());) {
+      const text = node.textContent.trim(),
+        parent = node.parentElement;
+      if (!text || parent.closest(".sr-only,[hidden],.loading.is-hidden"))
+        continue;
+      if (
+        parent.getBoundingClientRect().width &&
+        getComputedStyle(parent).visibility !== "hidden"
+      )
+        visibleText.push(text);
+    }
+    const unlabeled = [...document.querySelectorAll("button")]
+      .filter((b) => !b.getAttribute("aria-label"))
+      .map((b) => b.id);
+    return { visibleText, unlabeled };
+  });
+  assert.deepEqual(
+    issues,
+    { visibleText: [], unlabeled: [] },
+    "UI stays text-free with accessible icon names",
+  );
+}
 const pause = (ms) => page.waitForTimeout(check ? Math.min(ms, 150) : ms);
 const point = async (p) => page.mouse.move(p.x * 1600, p.y * 1000);
 async function stroke(from, to, slow = false) {
@@ -51,6 +90,7 @@ async function stroke(from, to, slow = false) {
   }
   await page.mouse.up();
 }
+await checkIconInterface();
 await page.screenshot({ path: "output/scalpless-bench.png" });
 if (check) {
   await tool("scalpel");
@@ -95,7 +135,7 @@ if (check) {
   await page.mouse.move(980, 380, { steps: 10 });
   await page.mouse.up({ button: "right" });
   assert.equal((await debug()).state.cut, partial, "Camera must not cut");
-  await page.locator("#home-view").click();
+  await homeView();
   await stroke(25, 96);
   assert((await debug()).state.cutOpen, "Stroke coverage opens section");
   await page.locator("#undo").click();
@@ -124,7 +164,7 @@ await page.mouse.up();
 assert((await debug()).state.pieces.section.detached);
 assert((await debug()).state.available.some((p) => p.id === "layer-0"));
 // The accessible place operation uses the same held body and physics release.
-await page.locator("#piece-select").selectOption("section");
+await choosePiece("section");
 await page.locator("#primary-action").click();
 await page.locator("#place-action").click();
 await page.waitForTimeout(1500);
@@ -133,7 +173,7 @@ assert(
   "Section remains above the tray",
 );
 await page.screenshot({ path: "output/scalpless-cutaway.png" });
-await page.locator("#piece-select").selectOption("layer-0");
+await choosePiece("layer-0");
 d = await debug();
 grasp = d.graspPoints["layer-0"];
 await point(grasp);
@@ -154,6 +194,7 @@ assert(
 );
 await page.mouse.move(grasp.x * 1600 - 95, grasp.y * 1000 - 20, { steps: 20 });
 await pause(500);
+await checkIconInterface();
 await page.screenshot({ path: "output/scalpless-peeling.png" });
 await page.mouse.up();
 assert(!(await debug()).state.pieces["layer-0"].detached);
@@ -172,7 +213,7 @@ await page.waitForTimeout(1200);
 assert((await debug()).state.available.some((p) => p.id === "layer-1"));
 await page.screenshot({ path: "output/scalpless-dissection.png" });
 if (check) {
-  await page.locator("#piece-select").selectOption("layer-1");
+  await choosePiece("layer-1");
   await page.locator("#primary-action").focus();
   await page.keyboard.press("Enter");
   while (!(await debug()).state.pieces["layer-1"].detached)
@@ -181,7 +222,7 @@ if (check) {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(1000);
   assert((await debug()).state.available.some((p) => p.id === "epidermis"));
-  await page.locator("#piece-select").selectOption("epidermis");
+  await choosePiece("epidermis");
   await page.locator("#primary-action").click();
   while (!(await debug()).state.pieces.epidermis.detached)
     await page.locator("#primary-action").click();
@@ -199,10 +240,10 @@ if (check) {
   await page.screenshot({ path: "output/scalpless-reverse.png" });
   for (let i = 0; i < 24; i++) await page.keyboard.press("ArrowRight");
   await page.screenshot({ path: "output/scalpless-back.png" });
-  await page.locator("#home-view").click();
+  await homeView();
   // Piece release beyond the tray falls onto the physical bench, not into space.
   await tool("hand");
-  await page.locator("#piece-select").selectOption("section");
+  await choosePiece("section");
   await page.locator("#primary-action").click();
   for (let i = 0; i < 28; i++) await page.keyboard.press("ArrowLeft");
   for (let i = 0; i < 25; i++) await page.keyboard.press("ArrowDown");
@@ -240,9 +281,10 @@ if (check) {
       .map((b) => b.id),
   );
   assert.deepEqual(undersized, []);
+  await checkIconInterface();
   await page.screenshot({ path: "output/scalpless-small-viewport.png" });
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.locator("#home-view").click();
+  await homeView();
   await page.waitForTimeout(3200);
 } else {
   await tool("inspect");

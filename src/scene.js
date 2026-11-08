@@ -40,8 +40,8 @@ export async function createBench(host) {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.ROTATE,
   };
-  const homePosition = new THREE.Vector3(0.18, 0.22, 0.35),
-    homeTarget = new THREE.Vector3(-0.078, 0.057, -0.012);
+  const homePosition = new THREE.Vector3(0.18, 0.213, 0.35),
+    homeTarget = new THREE.Vector3(-0.078, 0.05, -0.012);
   function home() {
     const mobile = host.clientWidth < 650;
     controls.target.copy(homeTarget);

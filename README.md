@@ -15,14 +15,16 @@ Open http://127.0.0.1:5173. Keep the terminal running while using the bench.
 
 ## Working at the bench
 
-1. **Inspect (V):** left drag to orbit. Right drag or the arrow keys with the scene focused also orbit. Scroll or use **+/−** to zoom. The home button returns to the working view; the camera button reveals native orbit controls.
+The visible interface uses icons only, with a glass toolbar at the lower left. Branding, captions, tool labels, keyboard badges, instructional text and visible notifications are omitted. Every control retains an accessible name and keyboard operation; status messages are announced to screen readers. The instructions below refer to those accessible names.
+
+1. **Inspect (V):** left drag to orbit. Right drag or the arrow keys with the scene focused also orbit. Scroll or use **+/−** to zoom. The magnifier opens camera controls for zoom, orbit and return to the working view.
 2. **Scalpel (S):** drag along the supported longitudinal seam on the front of the intact onion. The lightbulb reveals its guide. Short strokes accumulate, and releasing preserves partial progress. At least 90% of the seam must be covered; endpoint clicks and off-surface movements cannot substitute for tracing it. **Trace supported seam** is the keyboard-accessible equivalent.
-3. **Forceps (H):** grasp the freed section and drag it away. Release to let it settle. With a keyboard, select a piece and use **Lift selected piece**, the directional pad, and **Place on bench**.
+3. **Forceps (H):** grasp the freed section and drag it away. Release to let it settle. The layers icon opens a tissue picker; choose a tissue icon, then use the lift arrow, directional pad and place icon. Their accessible names are **Lift selected piece** and **Place on bench**.
 4. **Peel:** grasp the exposed edge of the outer skin and pull. Moving back relaxes the bend. Releasing a partial peel leaves it attached; grasp again to continue. Once detached, carry and place it. Fleshy layers use the same interaction. A thin epidermis patch becomes available on the first removed fleshy layer.
 5. **While holding:** arrows move horizontally, **Page Up / Page Down** lift and lower, **Q / E** rotate a detached piece. The on-screen pad provides the same actions. **Escape** cancels the current manipulation.
 6. **Undo (⌘/Ctrl Z)** restores the previous completed stroke or manipulation. **Reset (R)** restores the intact specimen, camera, tools and collection area.
 
-There are no timing challenges. Controls have 48 px minimum targets, visible focus, native buttons/selects and brief live announcements. Reduced-motion preferences disable camera inertia, interface transitions and animated relaxation of released attached tissue. Direct manipulation and gravitational settling remain available.
+There are no timing challenges. Controls have 48 px minimum targets, visible focus, native buttons, accessible names and brief screen-reader announcements. Reduced-motion preferences disable camera inertia, interface transitions and animated relaxation of released attached tissue. Direct manipulation and gravitational settling remain available.
 
 ## Architecture
 
@@ -72,7 +74,7 @@ npm run capture           # PNGs and a recorded cut–peel–place walkthrough
 
 Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`.
 
-Browser checks exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
+Browser checks verify the absence of visible interface text and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
 
 ## Deliberate limits
 
