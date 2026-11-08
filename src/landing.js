@@ -20,7 +20,7 @@ function present(){
 function tick(now){
   raf=0;const dt=Math.min((now-last)/1000||.016,.05);last=now;
   if(entered)return;
-  if(starting)entryProgress=reduced.matches?1:Math.min(1,entryProgress+dt/1.6);
+  if(starting)entryProgress=reduced.matches?1:Math.min(1,entryProgress+dt/2.8);
   else {
     progress=reduced.matches?target:progress+(target-progress)*(1-Math.exp(-12*dt));
     if(Math.abs(progress-target)<.0001)progress=target;

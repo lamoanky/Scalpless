@@ -608,7 +608,8 @@ button:disabled {
    step aside while one of them is open and return when it closes. */
 body:has(#bench.has-organ-study) .lesson,
 body:has(#teaching-panel:not([hidden])) .lesson,
-body:has(#hand-tracking-panel:not([hidden])) .lesson {
+body:has(#hand-tracking-panel:not([hidden])) .lesson,
+.landing-preview .lesson {
   display: none;
 }
 .lesson-gesture {

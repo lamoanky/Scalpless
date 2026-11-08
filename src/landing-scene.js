@@ -102,7 +102,7 @@ export async function createLandingScene(bench,specimen) {
   const anchor=new THREE.Vector3(),startAnchor=new THREE.Vector3();
   const cameraStart=new THREE.Vector3(),targetStart=new THREE.Vector3(),finalCamera=new THREE.Vector3();
   const finalMatrix=new THREE.Matrix4(),pivot=new THREE.Matrix4().makeTranslation(-center.x,-center.y,-center.z);
-  const unitScale=new THREE.Vector3(1,1,1);
+  const unitScale=new THREE.Vector3(1,1,1),up=new THREE.Vector3(0,1,0),spin=new THREE.Quaternion();
   let lastFrame=null;
   function update(frame) {
     lastFrame=frame;specimenRoot.visible=false;
@@ -116,8 +116,11 @@ export async function createLandingScene(bench,specimen) {
     const mobile=bench.host.clientWidth<700;
     const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),(mobile?2.7:2.1)+frame.previewRotation+(frame.idleRotation??0));
     rotation.slerpQuaternions(yaw.clone().multiply(flip),identity,frame.pose);
+    // One full pirouette on the way onto the platform; 0 and 2π both leave
+    // the exact start and bench orientations untouched.
+    rotation.premultiply(spin.setFromAxisAngle(up,frame.pose*Math.PI*2));
     startAnchor.set(0,0,.006).applyQuaternion(yaw).add(specimen.origin);startAnchor.y=seatedAnchorY;
-    anchor.lerpVectors(startAnchor,center,frame.pose);anchor.y+=Math.sin(frame.pose*Math.PI)*.035;
+    anchor.lerpVectors(startAnchor,center,frame.pose);anchor.y+=Math.sin(frame.pose*Math.PI)*.06;
     finalMatrix.compose(anchor,rotation,unitScale).multiply(pivot);
     if(frame.pose===1)finalMatrix.identity();
     for(const root of [specimenRoot,heroRoot,handoffRoot]) {
