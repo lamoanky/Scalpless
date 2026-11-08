@@ -42,6 +42,8 @@ Scroll through the opening scene, choose the frog icon at the upper left of the 
 
 The custom frog has continuous tapered limbs, webbed feet, gold irises, authored 2K skin/tissue maps and irregular organ lobes. Natural ventral skin is the default; the layers button beside the specimen selector reveals a blue translucent anatomy view. This view does not change dissection progress, and reset restores natural skin. Organs remain pre-separated rigid pieces, and the abdominal panel combines skin and muscle. Connective-tissue cutting and detailed anatomical validation are not included. See [frog model resources and implementation notes](docs/frog-model.md) for the visual reference, supported workflow and import requirements for an exact licensed replacement.
 
+The blue frog now uses exactly the same detailed geometry, UVs, normals, incision, organ positions and collision shapes as the copper frog. Its 2K exterior atlas is a blue recoloring of the same markings; skin grain, moist finish, eyes and internal tissues share the original material settings. `python3 scripts/prepare-blue-frog.py` regenerates that atlas. Both variants use the same lighting. Landing poses blend the shared detailed limbs into a crouch and restore the original lab vertices exactly; the skin coordinates stay fixed to the tissue. Decorative landing studies also come from this specimen definition.
+
 `npm run test:frog` checks the frog workflow; `npm run capture:frog` also records a walkthrough.
 
 ## Webcam hand controls
@@ -166,6 +168,7 @@ npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
 npm run test:study        # independent organ view, undo/reset and narrow layouts
 npm run test:glass        # original glass shader, resize, Retina/mobile and controls
+npm run test:frog-variants # exact blue/copper geometry and collider parity (Vite dev server)
 npm run test:teaching     # mock Gemini replies, no-key/errors, input isolation and mobile
 npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
 FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks

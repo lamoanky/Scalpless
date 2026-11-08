@@ -2,6 +2,10 @@
 
 Open `/lab.html?specimen=frog`, or choose the frog icon at the upper left of the bench. The landing page uses the blue variant (`&appearance=blue`), keeping the same meshes from the opening through rotation onto the platform and interactive dissection. The copper version remains the default on this direct route.
 
+Blue and copper are now color variants of one detailed model. The old faceted blue exterior and stretched organ layout have been removed. Both variants share every body/organ vertex, normal, UV, supported incision sample and collider; only exterior palette, lip color and matching skin sheen/attenuation colors differ. The blue atlas preserves the copper atlas's markings and fine value variation. The blue anatomy toggle now reveals the same muscle/vessel/bone details as the copper version.
+
+`frog-pose.js` stores the final geometry and a presentation-only crouch. Landing interpolation never replaces a mesh or changes its UVs; rest-space shader coordinates keep markings attached. Entering the bench restores the exact final positions/normals before physics and tool input resume. The simplified joint blend is presentation posing, not a full anatomical skeleton or soft-body simulation.
+
 This is a custom frog with reference-guided proportions and simplified ventral anatomy. It is not an anatomical scan or a validated training model. No third-party frog mesh or textures are bundled.
 
 The natural-skin view uses a rounded jaw, lateral gold irises, continuous tapered limbs with shallow muscle contours, four forelimb digits, five webbed hindlimb digits, and authored textures. The latest exterior reference guides copper-orange skin, golden flank patches, irregular chestnut abdominal markings, darker webbing and a wet, pebbled surface. Organ surfaces have irregular lobes, fine mottling and restrained vascular detail.

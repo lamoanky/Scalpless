@@ -18,9 +18,9 @@ function tissueSurface(material, detail, {
     });
     shader.vertexShader = shader.vertexShader.replace(
       "#include <common>",
-      "#include <common>\nvarying vec3 vFrogPosition, vFrogNormal;",
+      "#include <common>\nattribute vec3 frogRestPosition, frogRestNormal;\nvarying vec3 vFrogPosition, vFrogNormal;",
     ).replace("#include <begin_vertex>",
-      "#include <begin_vertex>\nvFrogPosition=position; vFrogNormal=normal;");
+      "#include <begin_vertex>\nvFrogPosition=frogRestPosition; vFrogNormal=frogRestNormal;");
     shader.fragmentShader = shader.fragmentShader.replace("#include <common>", `
       #include <common>
       varying vec3 vFrogPosition, vFrogNormal;
@@ -90,7 +90,8 @@ function tissueSurface(material, detail, {
   return material;
 }
 
-export async function frogMaterials() {
+export async function frogMaterials({ appearance = "natural" } = {}) {
+  const blue = appearance === "blue";
   const loader = new THREE.TextureLoader();
   const base = `${import.meta.env.BASE_URL}textures/frog/`;
   async function texture(file, color = false) {
@@ -103,7 +104,7 @@ export async function frogMaterials() {
   const [exteriorMap, irisMap, skinDetail, organDetail, membraneDetail,
     muscleDetail, lungDetail, liverDetail, digestiveDetail, vascularDetail] =
     await Promise.all([
-      texture("exterior-color.webp", true),
+      texture(blue ? "exterior-blue-color.webp" : "exterior-color.webp", true),
       texture("iris-color.webp", true), texture("exterior-detail.png"),
       texture("organ-detail.png"), texture("membrane-detail.png"),
       texture("muscle-detail.png"),
@@ -121,15 +122,16 @@ export async function frogMaterials() {
   }
   const skin = tissue("#ffffff", {
     map: exteriorMap, roughness: .4, clearcoat: .72, clearcoatRoughness: .17,
-    sheen: .2, sheenColor: new THREE.Color("#d9935b"),
+    sheen: .2, sheenColor: new THREE.Color(blue ? "#5b9dd9" : "#d9935b"),
   }, { scale: 32, bump: .00019, mottling: .3, exterior: true, coatDetail: .8 }, skinDetail);
   const belly = tissue("#ffffff", {
     map: exteriorMap, roughness: .4, clearcoat: .72, clearcoatRoughness: .17,
     thickness: .00065, attenuationDistance: .003,
-    attenuationColor: new THREE.Color("#c67b35"), sheen: .2,
-    sheenColor: new THREE.Color("#d9935b"),
+    attenuationColor: new THREE.Color(blue ? "#3583c6" : "#c67b35"), sheen: .2,
+    sheenColor: new THREE.Color(blue ? "#5b9dd9" : "#d9935b"),
   }, { scale: 32, bump: .00019, mottling: .3, underside: true,
     exterior: true, coatDetail: .8 }, skinDetail);
+  skin.userData.frogExterior = belly.userData.frogExterior = true;
   const translucent = new THREE.MeshPhysicalMaterial({
     color: "#408fae", transparent: true, opacity: .35, depthWrite: false,
     roughness: .43, clearcoat: .28, clearcoatRoughness: .2,
@@ -167,7 +169,7 @@ export async function frogMaterials() {
     bone: tissue("#d6c6a6", { roughness: .55, clearcoat: .15 }, { bump: .000018 }),
     artery: tissue("#953c49", { roughness: .36 }, { bump: .000012, mottling: .14 }),
     vein: tissue("#596472", { roughness: .38 }, { bump: .000012, mottling: .14 }),
-    lip: tissue("#653423", { roughness: .44, clearcoat: .55 }, { bump: .00006 }),
+    lip: tissue(blue ? "#234665" : "#653423", { roughness: .44, clearcoat: .55 }, { bump: .00006 }),
     iris: new THREE.MeshPhysicalMaterial({
       map: irisMap, roughness: .18, clearcoat: 1, clearcoatRoughness: .08,
     }),

@@ -298,13 +298,8 @@ export async function createBench(host, view = {}) {
       fill.intensity = frog ? .22 : .15;
       key.shadow.radius = frog ? 3 : 6;
       key.shadow.intensity = frog ? .75 : .6;
-      const blue = specimen.appearance === "blue";
-      pipeline.setNeutralTone(blue);
-      if (blue) {
-        scene.environmentIntensity = .45;
-        key.color.set("#f8fbff"); key.intensity = 1.8;
-        rim.intensity = 1.4; fill.intensity = .45;
-      }
+      // Color variants share the same tissue illumination and tone mapping.
+      pipeline.setNeutralTone(false);
       renderer.transmissionResolutionScale = frog ? .5 : 1;
       // Keep transmission, contact occlusion and antialiasing within the laptop
       // frame budget on Retina displays; CSS layout and camera stay identical.

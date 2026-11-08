@@ -47,7 +47,7 @@ export function createLandingScene(bench, specimen) {
   // Both rooms composite behind the very same specimen. The intro floor and
   // backdrop fade before entry, restoring the onion bench's real reflections.
   bench.setPresentationBackdrop(skyTexture,1);
-  const {group:frog,variant,pattern}=createLandingFrog();
+  const {group:frog,variant,pattern}=createLandingFrog(specimen);
   const floor=new Reflector(new THREE.PlaneGeometry(40,40),{color:0xbedcfa,textureWidth:1024,textureHeight:1024,multisample:0,clipBias:.003});
   floor.rotation.x=-Math.PI/2;floor.position.y=-.035;scene.add(floor);
   // Frosted reflection fades into the same sky at the horizon. Sample the
@@ -117,10 +117,21 @@ export function createLandingScene(bench, specimen) {
       const dot=new THREE.Mesh(new THREE.CircleGeometry(.027,12),new THREE.MeshBasicMaterial({color:j===index%4?'#25b8f1':'#a8caee',transparent:true,opacity:j===index%4?.9:.5}));
       dot.position.set((j-1.5)*.13,-.49,.03);panel.add(dot);
     }
-    panel.traverse(o=>{if(o.isMesh)o.material=o.material.clone();});
+    panel.traverse(o=>{if(o.isMesh){
+      const original=o.material;
+      o.material=original.clone();
+      o.material.onBeforeCompile=original.onBeforeCompile;
+      o.material.customProgramCacheKey=original.customProgramCacheKey;
+    }});
     panel.userData={x,y,z,angle};scene.add(panel);panels.push(panel);
   }
   const center=specimen.origin.clone().add(new THREE.Vector3(0,.044,0));
+  // Ground the detailed crouch by its actual feet, rather than dimensions of
+  // the former low-poly model. The final transform still becomes identity.
+  specimen.setPresentationPose?.(0);
+  world.updateMatrixWorld(true);
+  const seatedBounds=new THREE.Box3().setFromObject(specimenRoot);
+  const seatedAnchorY=specimen.origin.y-.035*.05+seatedBounds.max.y-center.y;
   const flip=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
   const identity=new THREE.Quaternion();
   const rotation=new THREE.Quaternion(),anchor=new THREE.Vector3(),startAnchor=new THREE.Vector3();
@@ -139,7 +150,8 @@ export function createLandingScene(bench, specimen) {
     const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),mobile?2.7:2.1);
     const initialRotation=yaw.clone().multiply(flip);
     rotation.slerpQuaternions(initialRotation,identity,frame.pose);
-    startAnchor.set(0,.038,.006).applyQuaternion(yaw).add(specimen.origin);
+    startAnchor.set(0,0,.006).applyQuaternion(yaw).add(specimen.origin);
+    startAnchor.y=seatedAnchorY;
     anchor.lerpVectors(startAnchor,center,frame.pose);
     anchor.y+=Math.sin(frame.pose*Math.PI)*.035;
     finalMatrix.compose(anchor,rotation,new THREE.Vector3(1,1,1));

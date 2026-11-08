@@ -10,7 +10,9 @@ try {
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true'&&window.__scalplessLanding.getDebug().labReady);
   await page.waitForTimeout(700);
   await page.screenshot({path:'output/frog-landing-desktop.png'});
+  const posterStyle=await page.addStyleTag({content:'.enter-lab,.scroll-cue,.model-loading,.return-home{visibility:hidden!important}'});
   await page.locator('#lab-frame').screenshot({path:'output/frog-landing-poster-source.png'});
+  await posterStyle.evaluate(element=>element.remove());
   console.log('Captured opening');
   const timing=await page.evaluate(async()=>{
     const distance=document.querySelector('.scroll-story').offsetHeight-innerHeight;
