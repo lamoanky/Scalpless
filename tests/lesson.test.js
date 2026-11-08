@@ -53,3 +53,46 @@ test("mouse mode offers the gesture alternative; webcam mode leads with it", () 
 test("every step has both mouse and gesture wording", () => {
   for (const step of LESSON_STEPS) assert.ok(step.detail && step.gesture, step.id);
 });
+
+// Frog lesson
+const frog = () => ({
+  specimen: "frog", tool: "inspect", cut: 0, cutOpen: false, available: [{ id: "abdomen" }],
+  pieces: Object.fromEntries(["abdomen","heart","liver","lung-left","lung-right","stomach","intestines"].map(id => [id, {}])),
+});
+const ids = ["heart","liver","lung-left","lung-right"].map(id => ({ id }));
+const frogStep = (state, done) => {
+  const p = lessonProgress(state, done);
+  return p.complete ? "done" : p.steps[p.current].id;
+};
+
+test("frog lesson starts at the scalpel and words the cut for the frog", () => {
+  assert.equal(frogStep(frog()), "scalpel");
+  const s = { ...frog(), tool: "scalpel", cut: 0.25 };
+  assert.equal(frogStep(s), "incision");
+  const { detail } = lessonProgress(s).steps[1];
+  assert.match(detail, /belly/);assert.match(detail, /25% done/);
+  assert.doesNotMatch(detail, /onion/);
+});
+
+test("frog lesson walks panel, heart, liver, digestive tract, then the chat", () => {
+  const s = { ...frog(), tool: "hand", cut: 1, cutOpen: true };
+  assert.equal(frogStep(s), "abdomen");
+  s.pieces.abdomen = { detached: true }; s.available = [{ id: "abdomen" }, ...ids];
+  assert.equal(frogStep(s), "heart");
+  s.pieces.heart = { detached: true };
+  assert.equal(frogStep(s), "liver");
+  s.pieces.liver = { detached: true }; s.available.push({ id: "stomach" }, { id: "intestines" });
+  assert.equal(frogStep(s), "digestive");
+  s.pieces.stomach = { detached: true };
+  assert.equal(frogStep(s), "digestive", "both digestive organs are needed");
+  s.pieces.intestines = { detached: true };
+  assert.equal(frogStep(s), "chat");
+  assert.equal(frogStep(s, new Set(["chat"])), "done");
+});
+
+test("frog lesson has no microscope step and keeps the onion lesson unchanged", () => {
+  const steps = lessonProgress(frog()).steps.map(s => s.id);
+  assert(!steps.includes("microscope"));
+  assert.equal(lessonProgress(base()).steps.at(-1).id, "microscope");
+  assert.equal(lessonProgress(frog()).completeTitle, "You dissected a frog");
+});

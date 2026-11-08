@@ -424,9 +424,8 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
-  // The guided lesson follows the onion dissection.
-  if (specimen.id === "onion")
-    installLesson({
+  // Each specimen has its own guided lesson (see src/lesson.js).
+  installLesson({
       lab,
       toggle: $("lesson-toggle"),
       announce: (text) => {
@@ -436,7 +435,6 @@ try {
       inputMode: () => bench.host.dataset.input ?? "mouse",
       inputHost: bench.host,
     });
-  else $("lesson-toggle").hidden = true;
   // Build final-pose colliders while loading, avoiding a hull-generation hitch
   // at the instant scroll releases the specimen to interactive physics.
   physics.syncSpecimen(specimen, lab.states);

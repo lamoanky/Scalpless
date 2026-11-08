@@ -604,6 +604,13 @@ button:disabled {
     display: none;
   }
 }
+/* The organ study, tutor chat and camera setup share the top right corner;
+   step aside while one of them is open and return when it closes. */
+body:has(#bench.has-organ-study) .lesson,
+body:has(#teaching-panel:not([hidden])) .lesson,
+body:has(#hand-tracking-panel:not([hidden])) .lesson {
+  display: none;
+}
 .lesson-gesture {
   margin: 8px 0 0;
   padding: 7px 9px;

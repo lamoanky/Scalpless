@@ -74,23 +74,105 @@ export const LESSON_STEPS = [
   },
 ];
 
+const shownIn = (state, id) => state.available.some((p) => p.id === id);
+
+export const FROG_LESSON_STEPS = [
+  LESSON_STEPS[0],
+  {
+    id: "incision",
+    title: "Cut around the belly",
+    detail: (s) =>
+      `Drag along the pale oval on the frog's belly. It turns gold where you have cut. ${Math.round(s.cut * 100)}% done.`,
+    gesture: (s) =>
+      `Keep your index finger out and trace the pale oval on the belly. Near the line, the blade snaps onto it. ${Math.round(s.cut * 100)}% done.`,
+    target: null,
+    done: (s) => s.cutOpen,
+  },
+  {
+    ...LESSON_STEPS[2],
+    done: (s) => s.tool === "hand" || piece(s, "abdomen").detached,
+  },
+  {
+    id: "abdomen",
+    title: "Lift the belly panel away",
+    detail: "Drag the cut panel off the frog and let go on the bench. The organs are underneath.",
+    gesture: "Pinch the cut panel, carry it off the frog, then open your hand to drop it.",
+    target: null,
+    done: (s) => shownIn(s, "liver"),
+  },
+  {
+    id: "heart",
+    title: "Pick up the heart",
+    detail: "It sits at the top, between the lungs. Holding an organ opens its study card: read what it does.",
+    gesture: "Pinch the heart, between the lungs. Its study card opens while you hold it.",
+    target: null,
+    done: (s) => piece(s, "heart").detached,
+  },
+  {
+    id: "liver",
+    title: "Move the liver aside",
+    detail: "The large lobed liver covers the digestive organs. Lift it out and set it down on the bench.",
+    gesture: "Pinch the liver, carry it aside, and open your hand to drop it.",
+    target: null,
+    done: (s) => shownIn(s, "stomach") || piece(s, "stomach").detached,
+  },
+  {
+    id: "digestive",
+    title: "Remove the stomach and intestines",
+    detail: (s) =>
+      `Food goes from the stomach into the coiled intestines. Lift out both. ${["stomach", "intestines"].filter((id) => piece(s, id).detached).length} of 2 done.`,
+    gesture: (s) =>
+      `Pinch and lift the stomach, then the coiled intestines. ${["stomach", "intestines"].filter((id) => piece(s, id).detached).length} of 2 done.`,
+    target: null,
+    done: (s) => piece(s, "stomach").detached && piece(s, "intestines").detached,
+  },
+  {
+    id: "chat",
+    title: "Ask the AI tutor",
+    detail: "Open the chat at the top right and ask about an organ, like \"Why does a frog have three heart chambers?\"",
+    gesture: "Open the chat at the top right and ask about an organ, like \"Why does a frog have three heart chambers?\"",
+    target: "#teaching-toggle",
+    // "chat" is recorded once the tutor answers a question.
+    done: (s, done) => done.has("chat"),
+  },
+];
+
+const LESSONS = {
+  onion: {
+    steps: LESSON_STEPS,
+    completeTitle: "You dissected an onion",
+    completeDetail: "Those brick-shaped cells are the classic onion epidermis. Explore freely, or start over.",
+  },
+  frog: {
+    steps: FROG_LESSON_STEPS,
+    completeTitle: "You dissected a frog",
+    completeDetail: "You opened the body cavity and traced the heart and digestive tract. Explore freely, or start over.",
+  },
+};
+
 const text = (value, state) => (typeof value === "function" ? value(state) : value);
 
 // mode is "webcam" or "mouse": the primary line follows the active input, and
 // mouse users also see the gesture alternative.
+// inspected holds milestones recorded outside lab state: microscope views
+// (onion) and "chat" once the tutor answers (frog).
 export function lessonProgress(state, inspected = new Set(), mode = "mouse") {
-  const index = LESSON_STEPS.findIndex((step) => !step.done(state, inspected));
-  const current = index === -1 ? LESSON_STEPS.length : index;
+  const lesson = LESSONS[state.specimen] ?? LESSONS.onion;
+  const steps = lesson.steps;
+  const index = steps.findIndex((step) => !step.done(state, inspected));
+  const current = index === -1 ? steps.length : index;
   return {
     current,
-    total: LESSON_STEPS.length,
+    total: steps.length,
     complete: index === -1,
-    steps: LESSON_STEPS.map((step, i) => ({
+    completeTitle: lesson.completeTitle,
+    completeDetail: lesson.completeDetail,
+    steps: steps.map((step, i) => ({
       id: step.id,
       title: step.title,
       detail: text(mode === "webcam" ? step.gesture : step.detail, state),
       alternative:
-        mode === "webcam" || step.id === "microscope"
+        mode === "webcam" || step.id === "microscope" || step.id === "chat"
           ? null
           : text(step.gesture, state),
       target: step.target,
@@ -140,6 +222,10 @@ export function installLesson({ lab, toggle, announce, restart, inputMode, input
     inspected.add(e.detail.id);
     render(lab.getState());
   });
+  window.addEventListener("teaching:answer", () => {
+    inspected.add("chat");
+    render(lab.getState());
+  });
 
   function render(state) {
     const progress = lessonProgress(state, inspected, inputMode());
@@ -151,10 +237,10 @@ export function installLesson({ lab, toggle, announce, restart, inputMode, input
       ? "Lesson complete"
       : `Step ${progress.current + 1} of ${progress.total}`;
     card.querySelector(".lesson-title").textContent = progress.complete
-      ? "You dissected an onion"
+      ? progress.completeTitle
       : step.title;
     card.querySelector(".lesson-detail").textContent = progress.complete
-      ? "Those brick-shaped cells are the classic onion epidermis. Explore freely, or start over."
+      ? progress.completeDetail
       : step.detail;
     card.querySelector(".lesson-gesture").hidden = progress.complete || !step.alternative;
     card.querySelector(".lesson-gesture-text").textContent = step?.alternative ?? "";
