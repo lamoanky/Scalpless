@@ -4,7 +4,7 @@ import { mkdir, writeFile, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 const base = process.env.PREVIEW_URL || "http://127.0.0.1:5173/";
-const url = new URL("./lab.html?specimen=frog", base).href;
+const url = new URL(`./lab.html?specimen=frog${process.env.FROG_APPEARANCE === "blue" ? "&appearance=blue" : ""}`, base).href;
 const chrome =
   process.env.CHROME_PATH ||
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -187,6 +187,8 @@ try {
       id,
       `${id} is accessible at its visible grasp point`,
     );
+    assert.equal((await debug()).organStudy.id,id,"Every held organ has a study display");
+    assert(await page.locator("#organ-slide").isVisible());
     if (id === "heart") {
       const held = (await debug()).state;
       await anatomy.click();
@@ -218,15 +220,21 @@ try {
         window.dispatchEvent(new CustomEvent("input:pinchend", { detail: {} })),
       );
     await page.waitForTimeout(450);
-    assert((await debug()).state.pieces[id].detached);
+    const dropped = await debug();
+    assert.equal(dropped.organStudy.id,id,"Release keeps the last organ study open");
+    assert.equal(dropped.organStudy.visible,true);
+    assert(dropped.state.pieces[id].detached && dropped.state.pieces[id].collected);
+    assert.equal(dropped.visibility[id],false);
+    assert.equal(dropped.physicalPieces[id],undefined);
+    assert(!dropped.state.available.some(p=>p.id===id));
     if (id === "liver")
       assert((await debug()).state.available.some((p) => p.id === "stomach"));
   }
   await page.waitForTimeout(1500);
   let state = await debug();
-  assert.equal(state.physicsBodies, 7);
-  for (const [id, pos] of Object.entries(state.positions))
-    assert(pos[1] > -0.06, `${id} stays on the physical bench`);
+  assert.equal(state.physicsBodies, 1,"Only the released abdominal panel remains on the bench");
+  for (const [id, bounds] of Object.entries(state.geometryBounds))
+    if (state.visibility[id]) assert(bounds.min[1] > -0.007, `${id} geometry stays on the physical bench`);
   await tool("inspect");
   await page.screenshot({ path: "output/frog-dissected.png" });
   await page.locator("#scene").focus();

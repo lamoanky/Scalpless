@@ -1,6 +1,6 @@
 # Frog specimen
 
-Open `/lab.html?specimen=frog`, or choose the frog icon at the upper left of the bench. The landing page's frog card links here too.
+Open `/lab.html?specimen=frog`, or choose the frog icon at the upper left of the bench. The landing page uses the blue variant (`&appearance=blue`), keeping the same meshes from the opening through rotation onto the platform and interactive dissection. The copper version remains the default on this direct route.
 
 This is a custom frog with reference-guided proportions and simplified ventral anatomy. It is not an anatomical scan or a validated training model. No third-party frog mesh or textures are bundled.
 
@@ -15,7 +15,7 @@ Visual reference: [3D Molier's Frog Anatomy Complete Body Transparent Skin](http
 1. Start with the abdominal panel in place. Select the scalpel and enable the lightbulb hint to reveal its oval incision. Short strokes accumulate to the same 90% coverage threshold as the onion. The native trace button provides a keyboard equivalent.
 2. Use forceps to lift and move the panel. It stays where you manipulate it; release returns it to Rapier simulation.
 3. Inspect and remove the heart, three-lobed liver, left lung and right lung. Moving the liver away makes the stomach and intestines selectable.
-4. Carry and rotate each piece, release it on the bench, or use the place button. Undo restores the previous operation. Reset restores all attachments, the intact panel, and the working camera.
+4. Carry and rotate each organ, then release it or use the place button. It disappears from the bench and physics while its information and rotatable study remain open. The abdominal panel still settles physically. Undo returns the organ and restores the previous study. Reset restores all attachments, the intact panel, and the working camera, and clears the study.
 
 Each removable organ is a pre-separated rigid piece. Grasping an accessible organ releases its attachment. The panel combines the skin and abdominal wall; arbitrary incisions, pinning multiple flaps, and cutting vessels or connective tissue are not simulated. Vessel and mesenteric details are attached visual geometry. The simplified organ shapes and their placement need subject-matter review before instructional use. Optional webcam controls share the same controller and six `input:*` events; physical-hand accuracy requires a live camera check.
 
@@ -77,3 +77,9 @@ Final local validation: 82 unit tests, the frog browser interaction check, and t
 The copper exterior pass changes the skin palette, microstructure, mouth pigment, eye orientation, jaw profile and shallow limb contours. The blue anatomy toggle, organ materials, incision surface, grasp metadata and controller remain as before. The supplied exterior photograph is a visual target; this is still custom procedural geometry, not a reconstruction of that specimen.
 
 Exterior close-up review also removed the redundant raised incision ring, projected the mouth crease onto the revised head surface, and inset the forelimb roots into the torso. The visible incision guide is still controlled by hints and uses the unchanged supported seam.
+
+## Continuous blue landing specimen
+
+The blue exterior is authored in `src/landing-frog.js`. Its torso and abdominal panel share the existing incision surface. The anatomy, guide, grasp points and collision shapes receive the same local height transform so contact remains aligned. Limb vertices rotate around fixed shoulder/hip pivots during entry; their final collision shapes are baked in lab coordinates. The controller, input events and physics implementation are unchanged. The same mesh UUIDs survive opening, rotation and handoff. Native blue-skin reset returns to the landed pose; it does not restart the landing animation.
+
+Blue-variant validation also covers manual partial/repeated incisions and mouse removal of all six organs. The taller cover uses its transformed tissue point for clearance checks, so tipping it beside the specimen correctly exposes the organs. Blue lighting uses neutral tone mapping; the direct copper specimen retains ACES.

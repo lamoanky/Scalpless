@@ -31,9 +31,12 @@ export async function createRenderPipeline(renderer, scene, camera) {
       tDiffuse: { value: null },
       coverage: { value: null },
       backdrop: { value: background },
+      presentationBackdrop: { value: background },
+      presentationOpacity: { value: 0 },
       crop: { value: new THREE.Vector2(1, 1) },
       toneMappingExposure: { value: renderer.toneMappingExposure },
       tissueOcclusion: { value: false },
+      neutralTone: { value: false },
       occlusion: { value: null },
       depth: { value: null },
       inverseProjection: { value: camera.projectionMatrixInverse },
@@ -42,8 +45,10 @@ export async function createRenderPipeline(renderer, scene, camera) {
     vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader: `
       uniform sampler2D tDiffuse,coverage,backdrop;
+      uniform sampler2D presentationBackdrop;
+      uniform float presentationOpacity;
       uniform sampler2D occlusion,depth;
-      uniform bool tissueOcclusion;
+      uniform bool tissueOcclusion,neutralTone;
       uniform mat4 inverseProjection;
       uniform vec2 aoTexel;
       uniform vec2 crop;
@@ -65,9 +70,15 @@ export async function createRenderPipeline(renderer, scene, camera) {
         }
         // Render-target color is premultiplied by coverage; unpremultiply before
         // tone mapping, then blend against the original image in display space.
-        color=ACESFilmicToneMapping(color/max(alpha,.0001));
+        color=neutralTone?NeutralToneMapping(color/max(alpha,.0001)):ACESFilmicToneMapping(color/max(alpha,.0001));
         color=sRGBTransferOETF(vec4(color,1.)).rgb;
         vec3 image=texture2D(backdrop,(vUv-.5)*crop+.5).rgb;
+        if(presentationOpacity>0.){
+          vec3 intro=texture2D(presentationBackdrop,vUv).rgb;
+          intro=neutralTone?NeutralToneMapping(intro):ACESFilmicToneMapping(intro);
+          intro=sRGBTransferOETF(vec4(intro,1.)).rgb;
+          image=mix(image,intro,presentationOpacity);
+        }
         gl_FragColor=vec4(mix(image,color,alpha),1.);
       }`,
   });
@@ -79,6 +90,11 @@ export async function createRenderPipeline(renderer, scene, camera) {
   composite.material.toneMapped = false;
   composer.addPass(composite);
   return {
+    setPresentationBackdrop(texture, opacity) {
+      composite.uniforms.presentationBackdrop.value = texture ?? background;
+      composite.uniforms.presentationOpacity.value = THREE.MathUtils.clamp(opacity, 0, 1);
+    },
+    setNeutralTone(enabled) { composite.uniforms.neutralTone.value = enabled; },
     setTissueOcclusion(enabled) {
       tissueOcclusion = enabled;
       composite.uniforms.tissueOcclusion.value = enabled;

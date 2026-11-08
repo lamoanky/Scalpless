@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createLandingFrog, prepareBluePose, applyBluePose, BLUE_TO_LAB, BLUE_ANATOMY_SCALE, BLUE_ANATOMY_LIFT } from "../landing-frog.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
   organicTube,
@@ -27,8 +28,11 @@ export const FROG_ORGANS = [
   "intestines",
 ];
 
-export async function createFrog(scene) {
+export async function createFrog(scene, { appearance = "natural" } = {}) {
   const materials = await frogMaterials();
+  const blue = appearance === "blue" ? createLandingFrog() : null;
+  const blueGeometry = new Set();
+  if (blue) materials.skin = materials.belly = blue.skin;
   const { skin, belly } = materials;
   const parts = new Map(),
     skinSurfaces = [],
@@ -47,6 +51,7 @@ export async function createFrog(scene) {
       initialPosition: FROG_ORIGIN.clone(),
       layer: null,
       interaction: "lift",
+      collectOnRelease: FROG_ORGANS.includes(id),
       fixed,
       grasp: new THREE.Vector3(...grasp),
       color,
@@ -403,6 +408,30 @@ export async function createFrog(scene) {
       );
     }
 
+  if (blue) {
+    // Keep the real cavity and organs. Replace only the outside with the same
+    // blue exterior that appears in the opening, already in final lab units.
+    body.meshes = body.meshes.filter(m =>
+      m.material === materials.cavity || m.material === materials.rim);
+    anatomyMeshes.length = 0;
+    body.group.clear();
+    for (const source of blue.group.children) {
+      if (source === blue.abdomen) continue;
+      const geometry = source.geometry.clone().applyMatrix4(BLUE_TO_LAB);
+      prepareBluePose(geometry);
+      blueGeometry.add(geometry);
+      mesh(body, geometry, source.material, false);
+    }
+    for (const geometry of blue.bodyColliders) {
+      geometry.applyMatrix4(BLUE_TO_LAB);
+      prepareBluePose(geometry);
+      applyBluePose(geometry,1);
+      blueGeometry.add(geometry);
+      wallColliders.push(geometry);
+    }
+    body.color = "#15bdf0";
+  }
+
   // Merge each material for rendering. Separate convex components preserve the
   // physical cavity, and anatomy-only details remain outside picking/colliders.
   body.collisionGeometries = [
@@ -411,6 +440,14 @@ export async function createFrog(scene) {
       .filter((m) => !m.userData.noCollision)
       .map((m) => m.geometry),
   ];
+  if (blue) {
+    const transform = new THREE.Matrix4().makeTranslation(0, BLUE_ANATOMY_LIFT, 0)
+      .multiply(new THREE.Matrix4().makeScale(1, BLUE_ANATOMY_SCALE, 1));
+    for (const geometry of new Set([...body.meshes.map(m => m.geometry), ...body.collisionGeometries])) {
+      if (!blueGeometry.has(geometry)) geometry.applyMatrix4(transform);
+      geometry.userData.rest = geometry.attributes.position.array.slice();
+    }
+  }
   const originals = [...body.meshes],
     internal = [...anatomyMeshes];
   skinSurfaces.length = 0;
@@ -429,13 +466,28 @@ export async function createFrog(scene) {
     }
   }
 
+  const posedMeshes=blue?body.meshes.filter(m=>m.geometry.hasAttribute('poseAngle')):[];
+  let presentationPose=-1;
+  function setPresentationPose(t) {
+    if(t===presentationPose)return;
+    presentationPose=t;
+    for(const m of posedMeshes)applyBluePose(m.geometry,t);
+  }
+  setPresentationPose(1);
+  for(const m of posedMeshes)m.geometry.userData.rest=m.geometry.attributes.position.array.slice();
+
   const abdomen = part(
     "abdomen",
     "Abdominal panel",
     [0, 0.033, 0.002],
     "#b95b28",
   );
-  mesh(abdomen, abdomenGeometry(), belly);
+  const coverGeometry = abdomenGeometry();
+  if (blue) {
+    const p = coverGeometry.attributes.position, uv = coverGeometry.attributes.uv;
+    for (let i=0;i<p.count;i++) uv.setXY(i,p.getX(i)/.07+.5,p.getZ(i)/.1+.5);
+  }
+  mesh(abdomen, coverGeometry, belly);
   abdomen.compoundCollider = true;
   abdomen.collisionGeometries = abdomenColliderGeometries();
   // Shallow abdominal mottling comes from the 2K skin maps, not raised ornaments.
@@ -589,6 +641,22 @@ export async function createFrog(scene) {
       );
   }
 
+  if (blue) {
+    const transform = new THREE.Matrix4().makeTranslation(0, BLUE_ANATOMY_LIFT, 0)
+      .multiply(new THREE.Matrix4().makeScale(1, BLUE_ANATOMY_SCALE, 1));
+    for (const p of parts.values()) {
+      if (p.id.startsWith("lung-")) p.grasp.set(p.grasp.x, .022, -.021);
+      p.grasp.applyMatrix4(transform);
+      if (p === body) continue;
+      const geometries = new Set([...p.meshes.map(m => m.geometry), ...(p.collisionGeometries ?? [])]);
+      for (const geometry of geometries) {
+        geometry.applyMatrix4(transform);
+        geometry.userData.rest = geometry.attributes.position.array.slice();
+      }
+    }
+    abdomen.color = "#15bdf0";
+  }
+
   function setAnatomyView(enabled) {
     anatomyView = Boolean(enabled);
     for (const m of skinSurfaces) {
@@ -607,7 +675,9 @@ export async function createFrog(scene) {
   const guidePoints = Array.from({ length: 97 }, (_, i) => {
     const angle = (i / 96) * Math.PI * 2,
       radius = 0.94;
-    return abdomenPoint(angle, radius).add(new THREE.Vector3(0, .00015, 0)).add(FROG_ORIGIN);
+    const p = abdomenPoint(angle, radius);
+    if (blue) p.y = p.y * BLUE_ANATOMY_SCALE + BLUE_ANATOMY_LIFT;
+    return p.add(new THREE.Vector3(0, .00015, 0)).add(FROG_ORIGIN);
   });
   const guide = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(guidePoints),
@@ -646,11 +716,24 @@ export async function createFrog(scene) {
   graspMarker.renderOrder = 7;
   scene.add(graspMarker);
 
-  const moved = (id, states) =>
-    states[id].detached &&
-    parts.get(id).group.position.distanceTo(FROG_ORIGIN) > 0.035;
+  const moved = (id, states) => {
+    if (!states[id].detached) return false;
+    if (states[id].collected) return true;
+    const p = parts.get(id);
+    // A tall blue cover can tip onto its side while its local origin returns
+    // near the body. Measure the actual tissue point, not that off-mesh origin.
+    if (blue) return p.grasp.clone().applyQuaternion(p.group.quaternion)
+      .add(p.group.position).distanceTo(p.grasp.clone().add(FROG_ORIGIN)) > .035;
+    return p.group.position.distanceTo(FROG_ORIGIN) > .035;
+  };
   return {
     id: "frog",
+    appearance,
+    getBounds: () => Object.fromEntries([...parts].map(([id,p]) => {
+      const box = new THREE.Box3().setFromObject(p.group);
+      return [id,{min:box.min.toArray(),max:box.max.toArray()}];
+    })),
+    setPresentationPose,
     setAnatomyView,
     get anatomyView() {
       return anatomyView;
@@ -671,7 +754,8 @@ export async function createFrog(scene) {
         ids.push("heart", "liver", "lung-left", "lung-right");
         if (moved("liver", states)) ids.push("stomach", "intestines");
       }
-      // Removed parts remain selectable even if the cover is placed back.
+      // Held parts remain selectable even if the cover is placed back.
+      // The controller excludes collected organs after release.
       for (const id of FROG_ORGANS)
         if (states[id].detached && !ids.includes(id)) ids.push(id);
       return ids.map((id) => parts.get(id));

@@ -13,6 +13,7 @@ export class LabController {
     this.hints = false;
     this.selected = specimen.openingPartId;
     this.held = null;
+    this.lastCollected = null;
     this.cutting = false;
     this.autoCut = false;
     this.listeners = new Set();
@@ -24,6 +25,7 @@ export class LabController {
     for (const part of specimen.parts.values())
       this.states[part.id] = {
         detached: false,
+        collected: false,
         separation: 0,
         bend: 0,
         direction: [1, 0, 0.2],
@@ -52,6 +54,7 @@ export class LabController {
       cut: this.coverage.fraction,
       cutOpen: this.coverage.complete,
       held: this.held?.id ?? null,
+      lastCollected: this.lastCollected,
       selected: this.selected,
       undo: this.history.size,
       available: this.available().map((p) => ({
@@ -71,7 +74,9 @@ export class LabController {
     return this.specimen.isOpen(this.states);
   }
   available() {
-    return this.cutOpen ? this.specimen.available(this.states) : [];
+    return this.cutOpen
+      ? this.specimen.available(this.states).filter((p) => !this.states[p.id].collected)
+      : [];
   }
   // Onion only: the membrane waits on the inner face of the peeled layer 1.
   get epidermisReady() {
@@ -86,6 +91,7 @@ export class LabController {
     return {
       bins: this.coverage.snapshot(),
       selected: this.selected,
+      lastCollected: this.lastCollected,
       states: structuredClone(this.states),
       transforms: [...this.specimen.parts.values()].map((p) => ({
         id: p.id,
@@ -105,6 +111,7 @@ export class LabController {
     this.coverage.restore(snapshot.bins);
     this.states = structuredClone(snapshot.states);
     this.selected = snapshot.selected;
+    this.lastCollected = snapshot.lastCollected ?? null;
     this.specimen.restoreAttachments?.(this.states);
     for (const t of snapshot.transforms) {
       const part = this.specimen.parts.get(t.id);
@@ -118,7 +125,8 @@ export class LabController {
       );
     }
     for (const part of this.specimen.parts.values())
-      if (this.states[part.id].detached) this.physics.createBody(part);
+      if (this.states[part.id].detached && !this.states[part.id].collected)
+        this.physics.createBody(part);
     this.physics.syncSpecimen(this.specimen, this.states);
     this.specimen.updateCut(this.coverage.bins, {
       complete: this.cutOpen,
@@ -576,7 +584,13 @@ export class LabController {
     // The membrane is fragile and short; most of the way off counts as off.
     if (held.id === "epidermis" && !state.detached && state.separation >= 0.6)
       this.peel(held.part, 1, new THREE.Vector3(...state.direction));
-    if (state.detached) this.physics.release(held.id);
+    if (state.detached && held.part.collectOnRelease) {
+      state.collected = true;
+      held.part.group.visible = false;
+      this.physics.remove(held.id);
+      this.lastCollected = held.id;
+      this.hover = null;
+    } else if (state.detached) this.physics.release(held.id);
     else this.settling.set(held.id, state.separation * 0.45);
     this.held = null;
     this.bench.controls.enabled = true;
@@ -584,12 +598,14 @@ export class LabController {
     this.bench.restTools();
     this.history.push(this.operationBefore);
     if (held.id === "layer-1" && this.epidermisReady) this.selected = "epidermis";
-    else if (held.id === this.specimen.openingPartId && this.sectionMoved)
+    else if (state.collected || (held.id === this.specimen.openingPartId && this.sectionMoved))
       this.selected =
         this.available().find((p) => !this.states[p.id].detached)?.id ??
         this.specimen.openingPartId;
     this.emit(
-      state.detached
+      state.collected
+        ? `${held.part.label} removed from the bench. Its study remains available.`
+        : state.detached
         ? `${held.part.label} placed.`
         : "The layer is still attached. Grasp its edge to continue peeling.",
     );
@@ -761,6 +777,9 @@ export class LabController {
           const box = new THREE.Box3().setFromObject(part.group, true);
           return [id, { min: box.min.toArray(), max: box.max.toArray() }];
         }),
+      ),
+      visibility: Object.fromEntries(
+        [...this.specimen.parts].map(([id, p]) => [id, p.group.visible]),
       ),
       drawCalls: this.bench.renderer.info.render.calls,
       triangles: this.bench.renderer.info.render.triangles,

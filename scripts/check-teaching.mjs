@@ -1,0 +1,102 @@
+import { chromium } from "playwright";
+import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});
+const page=await browser.newPage({viewport:{width:1440,height:960},reducedMotion:"reduce"});
+const base=process.env.PREVIEW_URL||"http://127.0.0.1:5173/";
+const key="test-browser-token-do-not-use", calls=[], errors=[];
+let reply="The liver produces bile and processes nutrients.", status=200, hold=false, offline=false;
+page.on("pageerror",error=>errors.push(error.message));
+await page.route("https://generativelanguage.googleapis.com/**",async route=>{
+  calls.push({url:route.request().url(),headers:route.request().headers(),body:route.request().postDataJSON()});
+  if(offline){await route.abort();return;}
+  if(hold)await new Promise(resolve=>setTimeout(resolve,1000));
+  await route.fulfill({status,contentType:"application/json",body:JSON.stringify(status===200?{candidates:[{finishReason:"STOP",content:{parts:[{text:reply}]}}]}:{error:{message:key}})}).catch(()=>{});
+});
+const state=()=>page.evaluate(()=>window.__scalpless.getDebug().state);
+const chat=()=>page.locator("#teaching-toggle").click();
+const question=page.locator("#teaching-question");
+const submit=async text=>{await question.fill(text);await page.locator("#teaching-send").click();};
+const choose=async id=>{await page.locator("#piece-menu").click();await page.locator(`[data-piece="${id}"]`).click();};
+const settings=async()=>{if(!await page.locator("#teaching-settings").evaluate(e=>e.open))await page.locator("#teaching-settings summary").click();};
+await mkdir("output",{recursive:true});
+try {
+  await page.goto(`${base}lab.html?specimen=frog`);await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
+  assert.equal(calls.length,0);await chat();
+  const intact=await state();await submit("What does a frog heart do?");
+  assert.match(await page.locator("#teaching-status").textContent(),/Nothing has been sent/);
+  assert.equal(calls.length,0);assert.deepEqual(await state(),intact);
+  await page.screenshot({path:"output/teaching-no-key.png"});
+  await page.locator("#teaching-key").fill(key);await page.getByRole("button",{name:"Use connection",exact:true}).click();
+  assert.equal(calls.length,0,"Saving a key does not send it");
+  assert.equal(await page.locator("#teaching-key").inputValue(),"");
+  assert(!await page.evaluate(key=>JSON.stringify({...localStorage,...sessionStorage}).includes(key),key));
+  await page.locator("#teaching-close").click();
+  await page.locator('[data-tool="scalpel"]').click();await page.locator("#primary-action").click();
+  await page.waitForFunction(()=>window.__scalpless.getDebug().state.cutOpen);
+  await page.locator('[data-tool="hand"]').click();await page.locator("#primary-action").click();await page.locator("#place-action").click();
+  await choose("liver");await page.locator("#primary-action").click();
+  assert(await page.locator("#organ-slide").isVisible());await chat();assert(!await page.locator("#organ-slide").isVisible());
+  const held=await state();
+  await question.fill("r v s h q e");await question.press("ArrowLeft");await question.press("Control+z");
+  assert.deepEqual(await state(),held,"Chat typing and editing cannot invoke lab shortcuts");
+  await question.press("Escape");assert(!await page.locator("#teaching-panel").isVisible());
+  assert.deepEqual(await state(),held,"Escape closes chat without cancelling the held organ");
+  await chat();
+  await submit("What does this organ do?");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent==="Answer ready.");
+  assert.equal(calls.length,1);assert.equal(calls[0].headers["x-goog-api-key"],key);assert(!calls[0].url.includes(key));
+  assert.match(calls[0].body.contents.at(-1).parts[0].text,/"held":"Liver"/);
+  assert(!JSON.stringify(calls[0].body).includes(key));
+  assert.deepEqual(await state(),held);
+  await page.screenshot({path:"output/teaching-answer.png"});
+  await page.locator("#teaching-share").uncheck();reply='<img src="x" onerror="window.bad=true"> This is plain text.';
+  await submit("How is that different from the stomach?");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent==="Answer ready.");
+  assert.equal(calls[1].body.contents.length,3);assert.match(calls[1].body.contents.at(-1).parts[0].text,/Not shared/);
+  assert.equal(await page.locator("#teaching-messages img").count(),0,"Model output is text, never executable markup");
+  status=429;await submit("Explain again");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("quota"));
+  assert(!await page.locator("body").innerText().then(text=>text.includes(key)));
+  assert.equal(await question.inputValue(),"Explain again","Failures retain the question for retry");
+  offline=true;await submit("Network failure question");
+  await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("Could not reach"));
+  assert.deepEqual(await state(),held,"A network failure cannot change the lab");offline=false;
+  status=200;hold=true;reply="Late answer must not appear";
+  await submit("A delayed question");await page.locator("#teaching-stop").click();
+  await page.waitForTimeout(1200);assert(!await page.locator("#teaching-messages").innerText().then(text=>text.includes(reply)));
+  hold=false;
+  await page.locator("#teaching-close").click();assert(await page.locator("#organ-slide").isVisible());
+  await page.locator("#place-action").click();assert(await page.locator("#organ-slide").isVisible());
+  await chat();await settings();await page.locator("#teaching-forget").click();
+  const count=calls.length;await submit("Hello again");assert.equal(calls.length,count);
+  for(const width of [390,320]) {
+    await page.setViewportSize({width,height:844});
+    await page.screenshot({path:`output/teaching-mobile-${width}.png`});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    const box=await page.locator("#teaching-panel").boundingBox();assert(box.x>=0&&box.x+box.width<=width);
+    await page.locator("#teaching-close").click();await chat();
+  }
+  await page.setViewportSize({width:844,height:390});
+  await settings();await page.locator("#teaching-key").fill(key);
+  await page.getByRole("button",{name:"Use connection",exact:true}).click();
+  await page.locator("#teaching-close").click();await chat();
+  await question.fill("Short viewport remains usable");
+  await page.screenshot({path:"output/teaching-landscape.png"});
+  await settings();await page.locator("#teaching-forget").click();
+  await page.setViewportSize({width:390,height:844});
+  // Configure again before navigation so this tests actual credential lifetime,
+  // rather than merely navigating with an already-forgotten key.
+  await settings();await page.locator("#teaching-key").fill(key);
+  await page.getByRole("button",{name:"Use connection",exact:true}).click();
+  await page.locator("#teaching-close").click();
+  await page.getByRole("link",{name:"Open onion dissection"}).click();await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
+  await chat();await submit("What is an onion epidermis?");assert.equal(calls.length,count,"Route changes do not persist a browser key");
+  assert.match(await page.locator("#teaching-context").textContent(),/Onion/);
+  await page.screenshot({path:"output/teaching-onion.png"});
+  // Mock the optional same-origin service as well. No real credential or remote
+  // model is used by this test; the actual proxy is exercised by node tests.
+  await page.route("**/api/tutor",route=>route.fulfill({status:503,contentType:"application/json",body:'{"error":"not configured"}'}));
+  await settings();await page.locator("#teaching-mode").selectOption("server");await page.getByRole("button",{name:"Use connection",exact:true}).click();
+  await submit("Help with this onion");await page.waitForFunction(()=>document.getElementById("teaching-status").textContent.includes("not configured"));
+  assert.deepEqual(errors,[]);
+  await writeFile("output/teaching-validation.json",JSON.stringify({passed:true,errors,mockedGoogleRequests:calls.length,checks:["no-key","explicit send only","context opt-out","conversation","plain text","quota","stop","forgot key","onion","narrow viewport","unconfigured server"]},null,2));
+  console.log("Teaching chat passed: no-key, contextual mock replies, credentials, errors, cancellation, input isolation and mobile.");
+} finally {await browser.close();}

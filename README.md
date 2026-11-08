@@ -11,17 +11,17 @@ npm install
 npm run dev -- --port 5173
 ```
 
-Open http://127.0.0.1:5173 for the landing page. **Start Dissection** and **Get Started** open the intact bench at http://127.0.0.1:5173/lab.html. Keep the terminal running while using the app. The production build includes both entry pages.
+Open http://127.0.0.1:5173 for the landing page. Scroll to enter the frog lab, or use the arrow at the upper right. The direct frog route is http://127.0.0.1:5173/lab.html?specimen=frog; `/lab.html` still opens the onion. Keep the terminal running while using the app. The production build includes both entry pages.
 
 ## Landing page
 
-Scroll through three stages: a cropped onion close-up, a full cutaway with orbit lines, and a specimen collection. The opening preserves the original onion image. During the first scroll interval, an aligned, additive crossfade hands it over to the live 3D onion; the model then gets smaller and completes two rotations as the scroll advances. Scrolling back reverses the motion. All movement derives from scroll position; there is no automatic tour.
+The text-free opening is a live Three.js illustration: a seated blue spotted frog, five glass anatomy-study displays, light rings and a frosted reflective floor. All geometry and graphic textures are authored locally. The supplied reference guides the composition; this is a procedural interpretation, not the original image or an imported frog model. The display studies are decorative, not additional available specimens or a functioning microscope.
 
-The landing page reuses the specimen geometry, 4K textures and local HDRI. Its background moves from a blue close-up with diagonal light bands into a softly defocused glass laboratory, then a specimen collection with luminous floor rings and the reference's silver instruments. These are three static image plates blended by scroll position, so the backdrop does not add to the 3D render workload. Its framing and material adjustments affect only the landing instance. The lab still starts intact. Onion and a basic frog prototype are available; Microscopy is marked as coming later.
+The opening and bench share one renderer and the same blue frog meshes. Scroll rotates the specimen belly-up, unfolds its limbs at the shoulders and hips, and brings the platform beneath it. The camera eases into the working view. There is no model swap or crossfade. At the end, the presentation transform becomes exactly the identity, physics resumes, and mouse/keyboard input passes to the existing lab controller. The blue specimen has the same supported abdominal incision, removable panel, organs, undo and reset. The copper specimen remains available at `/lab.html?specimen=frog`; the blue variant is `/lab.html?specimen=frog&appearance=blue`.
 
-The page adapts to narrow screens, uses native navigation links and FAQ disclosures, and respects reduced-motion preferences. **Motion on/off** switches between animated framing and a static reference image while keeping all three sections accessible. The reference image also remains visible if 3D assets fail to load.
+The icon-only entry controls have accessible names and visible keyboard focus. Reduced motion removes camera travel and rotation. Before entry, reverse scrolling restores the opening. Browser Back returns to the opening; `#lab` reloads into the lab, and the top-center return arrow starts a fresh visit. The lab loads inside a same-origin iframe, and its canvas renders both the opening and interactive bench. Tool input and physics stay locked until the frog has landed. Presentation messages are accepted only from the same-origin parent. Camera access remains opt-in through the lab's existing camera button.
 
-`python3 scripts/prepare-landing-art.py` regenerates `public/art/landing-onion-reference.webp` and the three `landing-*-background.webp` plates from the saved reference and retouched lab floor. The onion and instruments retain the source pixels, with conventional matte extraction and annotation cleanup. Resampling improves enlargement but cannot recover detail beyond the original 471 × 503 onion crop. The background combines the retouched floor with recreated glassware, reflections and lighting; it is not a pixel-for-pixel copy of the three-panel landing mockup.
+`public/art/frog-landing-poster.webp` is a render of the opening scene used during loading and if WebGL/HDRI loading fails. The direct-lab arrow remains usable. Legacy onion landing artwork remains in `public/art/` but is no longer used by the landing page.
 
 ## Working at the bench
 
@@ -38,7 +38,7 @@ There are no timing challenges. Controls have 48 px minimum targets, visible foc
 
 ## Frog dissection
 
-Choose the frog icon at the upper left, the landing page's frog card, or open http://127.0.0.1:5173/lab.html?specimen=frog. Trace the hinted oval incision around the abdominal panel, lift it with forceps, then inspect and remove the heart, liver, two lungs, stomach and intestines. Move the liver aside to reach the deeper digestive organs. Mouse, keyboard, and the existing webcam adapter share the same lab actions. The onion icon returns to the onion bench; switching specimens starts a fresh session.
+Scroll through the opening scene, choose the frog icon at the upper left of the bench, or open http://127.0.0.1:5173/lab.html?specimen=frog. Trace the hinted oval incision around the abdominal panel, lift it with forceps, then inspect and remove the heart, liver, two lungs, stomach and intestines. Move the liver aside to reach the deeper digestive organs. Mouse, keyboard, and the existing webcam adapter share the same lab actions. The onion icon returns to the onion bench; switching specimens starts a fresh session.
 
 The custom frog has continuous tapered limbs, webbed feet, gold irises, authored 2K skin/tissue maps and irregular organ lobes. Natural ventral skin is the default; the layers button beside the specimen selector reveals a blue translucent anatomy view. This view does not change dissection progress, and reset restores natural skin. Organs remain pre-separated rigid pieces, and the abdominal panel combines skin and muscle. Connective-tissue cutting and detailed anatomical validation are not included. See [frog model resources and implementation notes](docs/frog-model.md) for the visual reference, supported workflow and import requirements for an exact licensed replacement.
 
@@ -84,11 +84,54 @@ The original gesture sandbox is preserved at `npm run gesture:sandbox` → http:
 - `src/lab-environment.js`: transparent reflection/shadow catchers and a two-tier white/cyan platform; shared platform bounds keep rendering and collisions aligned.
 - `src/domain.js`: cut coverage and snapshot history independent of rendering.
 - `src/main.js`, `lab.html`, `src/style.css`: bench bootstrap, render loop and compact accessible controls.
-- `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: scroll scene, deterministic framing, landing content and responsive styles.
+- `src/landing.js`, `src/landing-motion.js`, `index.html`, `src/landing.css`: reversible scroll presentation, input handoff and responsive icon controls.
+- `src/landing-scene.js`, `src/landing-frog.js`: shared blue exterior, shoulder/hip posing, glass displays, procedural textures and reflected floor.
+- `src/landing-presentation.js`: validates parent messages, applies scroll presentation and releases input/physics after the final pose. Controller actions and camera controls remain unchanged after entry.
+- `src/organ-slide.js`, `src/organ-guide.js`: independent held/collected-organ study view and concise anatomy/context metadata.
+- `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: optional chat UI, session-only credentials/cancellation and bounded Gemini transport.
+- `server/tutor.mjs`: optional loopback teaching proxy; no client credentials or camera data are accepted.
 
 The specimen stays stationary during cutting. Attached tissue is deformed around its basal attachment with bounded displacement; separation progress is stored separately from its current bend. A detached shell retains its shape and becomes a rigid body. Collision geometry approximates its volume using smaller convex patches to preserve concavity. Held pieces follow constrained targets; release transfers them back to simulation with restrained motion.
 
-The original supplied design is preserved in `design/reference.png`. Runtime geometry is generated in code. The skin uses authored 4096 × 2048 color, normal and roughness maps; the cut faces use 2048 × 2048 color and normal maps. These synthesize fine fibers and wrinkles in the reference palette rather than claiming to recover photographic detail from the small reference. The specimen and tools remain live 3D objects, and floating educational panels are omitted.
+The original supplied design is preserved in `design/reference.png`. Runtime geometry is generated in code. The skin uses authored 4096 × 2048 color, normal and roughness maps; the cut faces use 2048 × 2048 color and normal maps. These synthesize fine fibers and wrinkles in the reference palette rather than claiming to recover photographic detail from the small reference. The specimen and tools remain live 3D objects. Educational UI is confined to the optional teaching panel and the small held-organ study slide.
+
+## Organ study slides
+
+Picking up a detached frog heart, liver, lung, stomach or intestine opens a small glass study slide. It shows the actual organ geometry, its name, function and an observation prompt. Drag the study view or focus it and use the arrow keys to rotate the study; Home restores its angle. This is a gross-anatomy 3D view, not microscopic tissue imagery.
+
+The live organ stays in your forceps until you drop it or use Place on bench. Releasing an organ removes it from the bench, picking and physics, while its information and rotatable study stay open. Picking up another organ updates the slide. The abdominal panel and onion tissue still settle physically on the bench.
+
+The slide is a read-only clone rendered through the existing WebGL renderer; it is never added to Rapier or the picking hierarchy. Undo restores the removed organ and the previous study; cancelling a new grab also restores the previous study. Reset returns every organ and clears the slide. Minimize it with its close button and reopen it with the slide icon, including after release. Opening the study never steals focus during a drag.
+
+The four-arrow button beside the tissue actions expands native movement controls. These start collapsed on smaller screens; the existing movement and rotation keyboard shortcuts remain available. Every button retains a 48 px target and visible keyboard focus.
+
+The descriptions are concise classroom summaries, checked against the [NWTC frog laboratory manual](https://bio.libretexts.org/Courses/Northeast_Wisconsin_Technical_College/General_Biology_Laboratory_Manual/Laboratory_14%3A_Vertebrates/14.02%3A_Amphibian_%28Frog%29_Dissection). The model remains a simplified educational illustration.
+
+## Gemini teaching chat
+
+Use the speech-bubble button at the upper right. Ask a question and press **Send** (or Enter; Shift+Enter adds a line). Suggested questions only fill the composer; they do not send a request. The panel can explain anatomy, organ function and the current virtual lab step. It never operates the tools. Its answers are AI-generated and should be checked with a teacher.
+
+No question, lab state or credential is transmitted on startup, opening the panel, or saving connection settings. A request is sent only when you submit a question. The optional **Share current lab state** checkbox includes the specimen, tool, incision stage, held/selected tissue and available/removed part names. It excludes webcam images, landmarks, coordinates and identifying data. Up to six completed exchanges are sent for follow-up context; **Clear** removes the conversation from this tab. Turning off context sharing omits the current state, but previous answers may still mention earlier lab state. Clear the conversation to remove that history too.
+
+### Browser connection for personal development
+
+Open **Gemini connection**, enter your own key from [Google AI Studio](https://aistudio.google.com/api-keys), and choose **Use connection**. The key stays in a private JavaScript closure for the lifetime of this page. The password field is cleared after configuration; the key is not put in local/session storage, URLs, debug state, logs or the repository. **Forget key**, reloading, or switching specimen routes removes it. Closing the chat retains it for this page session.
+
+**A browser key is exposed to that browser and its developer tools.** When you submit a question, it travels in the `x-goog-api-key` header directly to Google's Gemini endpoint. Do not use a shared project key this way in a public app. Google recommends a backend proxy for production [API key security](https://ai.google.dev/gemini-api/docs/api-key). Restrict your key and check the account's quota and data terms in AI Studio.
+
+The default text model is `gemini-3.5-flash-lite`, listed in Google's [model catalog](https://ai.google.dev/gemini-api/docs/models) when implemented. You can change the model name in settings if your account uses another supported text model. The adapter uses the documented [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Model availability, quotas and account eligibility can change. No live-provider answer was validated without a real key; automated checks intercept the provider and test the actual request/response boundary.
+
+### Optional server connection
+
+This is the safer development option: the browser sends only questions/history/coarse context to `/api/tutor`, and the server holds the Gemini key. No new dependencies are required.
+
+1. Create **`.env.local` in the project root**, which Git ignores. Add `GEMINI_API_KEY=your-key` using your editor. Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
+2. Run `npm run tutor` in a second terminal. It listens only on `127.0.0.1:8787`; restart it after changing `.env.local`. Keep `npm run dev -- --port 5173` running for the app. Vite dev and preview forward `/api/tutor` to the local service; restart either if needed after configuration changes.
+3. In the chat's connection settings choose **Server connection · recommended**, then **Use connection**. Nothing is sent until you submit a question. The service's model comes from the server environment, not the browser model field.
+
+The local proxy accepts JSON POSTs from localhost/127.0.0.1 ports 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel, changing connection settings and **Clear** cancel a pending request and ignore late replies.
+
+For deployment, supply an authenticated same-origin `/api/tutor` route with a server secret manager, per-user authorization/quotas and the appropriate origin policy. Do not publish this loopback development service as an unauthenticated public proxy. The production static build alone cannot provide that route.
 
 ## Integration contract
 
@@ -105,7 +148,15 @@ Dispatch `CustomEvent`s on `window`. Coordinates are normalized **0…1 within t
 
 Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning. Camera events add `source: 'webcam'`; they are accepted only while the camera owns input. A tracking-loss move also carries `lost: true` to clear hover feedback. The recognizer's additive `z` is preserved, but the lab controller uses canvas X/Y ray contact and its existing manipulation plane, rather than interpreting monocular height as physical depth.
 
-`lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `selected`, `undo`, `available` and per-piece `detached`, `separation`, `bend`, `direction`. Future educational UI can observe it. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
+`lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `lastCollected`, `selected`, `undo`, `available` and per-piece `detached`, `collected`, `separation`, `bend`, `direction`. Collected organs stay detached but are hidden, excluded from `available` and absent from physics. `lastCollected` identifies the persistent study; it and collection state are included in undo snapshots. The organ study and teaching panel observe the controller through its subscription interface; future integrations can use this event. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
+
+### Camera vision merge notes
+
+The input/camera adapters, root gesture recognizers, six events and Rapier implementation are unchanged. The controller now collects frog organs on release, including `input:pinchend`; adapters do not need separate collection logic. Tracking-loss release follows the same rule and remains undoable. Continue sending normalized scene coordinates through the existing adapter; do not target the organ study view as a second lab canvas. The study uses the main renderer's scissor/viewport and restores both after drawing. No additional render loop or WebGL context is introduced.
+
+The new panels subscribe to lab state. Chat fields and study rotation consume their own keyboard input so shortcut letters and arrows cannot cut, reset, rotate or move tissue while typing/inspecting a study. The new UI never starts or stops the camera. Only the **setup panel** is closed when switching between camera settings and chat; a running tracking session continues. Existing deliberate scene/tool input still takes ownership through the camera adapter. Panel visibility is coordinated in `main.js` by observing `#hand-tracking-panel`; keep that ID and `#tracking-close` or update the observer if the incoming branch changes its UI.
+
+Vite adds only an optional `/api/tutor` dev/preview proxy; keep the existing MediaPipe prebundle setting when merging its configuration. No webcam image, landmark or audio is included in teaching requests. The remaining merge checks are a real-person webcam run on both specimen routes and confirming normalized X/Y alignment after viewport/camera changes. Automated tracking checks use simulated camera frames and known landmarks, so they do not establish real-hand accuracy.
 
 ## Validation and artifacts
 
@@ -115,7 +166,10 @@ Start the local server, then:
 npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
-npm run test:landing      # scroll, navigation, lab entry and mobile checks
+npm run test:study        # independent organ view, undo/reset and narrow layouts
+npm run test:teaching     # mock Gemini replies, no-key/errors, input isolation and mobile
+npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
+FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks
 npm run test:tracking     # camera lifecycle and gesture-driven onion workflow
 npm run test:sandbox      # retained branch's rigged-hand sandbox browser checks
 npx playwright install ffmpeg # once, for video recording
@@ -123,9 +177,9 @@ npm run capture           # PNGs and a recorded cut–peel–place walkthrough
 npm run capture:landing   # recorded landing-page scroll walkthrough
 ```
 
-Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Landing checks default to port 4173 (the production preview); bench checks and captures default to port 5173. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`. Landing outputs include `landing-hero.png`, `landing-explore.png`, `landing-collection.png`, mobile views, `landing-validation.json` and `scalpless-landing-scroll.webm`.
+Capture scripts use installed Google Chrome on macOS. Set `CHROME_PATH` to another Chromium executable, or install Playwright Chromium with `npx playwright install chromium`. Set `PREVIEW_URL` to test a different local server; set `HIGH_RES=1` for 2× PNG output. Landing checks default to port 4173 (the production preview); bench checks and captures default to port 5173. Exports are in ignored `output/`, including `scalpless-bench.png`, `scalpless-cutaway.png`, `scalpless-peeling.png`, `scalpless-dissection.png`, `scalpless-walkthrough.webm` and `validation.json`. Landing outputs include `landing-hero.png`, `landing-transition.png`, `landing-interactive.png`, mobile views, `landing-validation.json` and `scalpless-landing-scroll.webm`.
 
-Browser checks verify the absence of visible interface text and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
+Browser checks verify the icon-only initial bench and the presence of accessible button names, then exercise partial/repeated strokes, endpoint clicks, invalid contact, interrupted drags, camera/tool ownership, manual section movement, reversible peeling, detached placement, further layers, epidermis removal, undo, reset while holding, release outside the tray and keyboard equivalents. Additional screenshots expose the reverse angle and a smaller viewport. Frame-rate samples are diagnostics for the local browser, not a guarantee for every GPU.
 
 `test:tracking` first loads the actual local MediaPipe model with Chrome's simulated camera. It then supplies known landmarks at the detector boundary to test gesture recognition through real onion picking, partial cuts, pinch placement, reversible peeling, tracking-loss release, zoom and input ownership. It also checks camera denial and the mobile setup panel. Camera lifecycle unit tests cover cancellation, late permission responses, disconnects, stalled frames and retry. These checks do not measure recognition accuracy on a person's live webcam.
 
@@ -135,7 +189,7 @@ This is an educational MVP approximation, not a validated tissue or surgical sim
 
 A future imported model needs closed removable parts, attachments, cut regions and physical metadata. The frog has a separate specimen definition. A wand can adapt to the existing input contract. Photograph-to-dissection would first need specimen identification and a prepared anatomical asset; unseen internal anatomy is not reconstructed here.
 
-Chatbot panels, microscopy, quizzes, wand input, n8n, backend services and deployment are deferred.
+Microscopy, quizzes, wand input, n8n and deployment are deferred. The optional local teaching proxy is limited to Gemini questions; it is not an authenticated production backend.
 
 ## Reference onion model
 

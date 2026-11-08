@@ -1,4 +1,5 @@
 import "./style.css";
+import { Box3 } from "three";
 import { createBench } from "./scene.js";
 import { createOnion } from "./specimens/onion.js";
 import { createPhysics } from "./physics.js";
@@ -7,12 +8,16 @@ import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
 import { installMicroscope, microscopeIcon } from "./microscope.js";
 import { installLesson } from "./lesson.js";
+import { createLandingPresentation } from "./landing-presentation.js";
+import { installOrganSlide } from "./organ-slide.js";
+import { installTeachingChat } from "./teaching-chat.js";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =
   new URLSearchParams(location.search).get("specimen") === "frog"
     ? "frog"
     : "onion";
+const appearance = new URLSearchParams(location.search).get("appearance") === "blue" ? "blue" : "natural";
 const paths = {
   inspect: "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
   scalpel: "m15 3 6 6-10 10-7 2 2-7L15 3Zm-9 11 5 5M14 5l5 5",
@@ -103,6 +108,7 @@ $("camera-angles").setAttribute("aria-controls", "camera-pad");
 $("piece-menu").innerHTML = icon("layers");
 $("place-action").innerHTML = icon("place");
 $("microscope-action").innerHTML = microscopeIcon;
+$("move-controls").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3m12-6 3 3-3 3"/></svg>';
 $("manipulation-pad").innerHTML = [
   ["0,0,-1", "up", "Move away (↑)"],
   ["0,1,0", "lift", "Lift (Page Up)"],
@@ -129,7 +135,7 @@ try {
     ),
     specimen =
       specimenId === "frog"
-        ? await (await import("./specimens/frog.js")).createFrog(bench.scene)
+        ? await (await import("./specimens/frog.js")).createFrog(bench.scene, { appearance })
         : await createOnion(bench.scene),
     physics = await createPhysics(),
     lab = new LabController(bench, specimen, physics);
@@ -176,6 +182,17 @@ try {
   };
   bench.host.dataset.input = "mouse";
   const handTracking = installHandTracking(bench, input);
+  const organSlide = installOrganSlide(lab, bench);
+  const cameraPanel = $("hand-tracking-panel");
+  const cameraPanelOpen = () => cameraPanel?.hidden === false;
+  const teachingChat = installTeachingChat(lab, bench, {
+    onToggle: open => organSlide.setSuspended(open || cameraPanelOpen()),
+  });
+  // Observe setup-panel visibility without touching the camera/gesture adapter.
+  if (cameraPanel) new MutationObserver(() => {
+    if (cameraPanelOpen()) teachingChat.close();
+    organSlide.setSuspended(teachingChat.isOpen || cameraPanelOpen());
+  }).observe(cameraPanel, {attributes:true, attributeFilter:["hidden"]});
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {
       closeMenus();
@@ -251,6 +268,12 @@ try {
     if (e.target.matches("input,select,textarea") || microscope?.isOpen) return;
     inspectHeld();
   });
+  let movementOpen = false, lastHeld = null;
+  $("move-controls").onclick = () => {
+    movementOpen = !movementOpen;
+    $("manipulation-pad").hidden = !movementOpen;
+    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
+  };
   $("manipulation-pad").onclick = (e) => {
     const action = e.target.closest("button")?.dataset.move;
     if (!action) return;
@@ -369,6 +392,13 @@ try {
       `Inspect ${specimen.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`,
     );
     $("manipulation-pad").hidden = !state.held;
+    if (state.held !== lastHeld) {
+      movementOpen = Boolean(state.held) && innerWidth > 1100;
+      lastHeld = state.held;
+    }
+    $("move-controls").hidden = !state.held;
+    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
+    $("manipulation-pad").hidden = !state.held || !movementOpen;
     $("tool-hint").textContent =
       state.tool === "inspect"
         ? "Drag to look around. Scroll to move closer."
@@ -392,19 +422,20 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
-  // The guided lesson follows the onion dissection.
-  if (specimen.id === "onion")
-    installLesson({
-      lab,
-      toggle: $("lesson-toggle"),
-      announce: (text) => {
-        $("status").textContent = text;
-      },
-      restart: () => $("reset").click(),
-      inputMode: () => bench.host.dataset.input ?? "mouse",
-      inputHost: bench.host,
-    });
-  else $("lesson-toggle").hidden = true;
+    if (state.held) lastPicked = state.held;
+    if (!state.cutOpen) lastPicked = null;
+    $("microscope-action").hidden = !inspectTarget() || state.tool !== "hand";
+    $("microscope-action").setAttribute(
+      "aria-label",
+      `Inspect ${specimen.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`,
+    );
+    if (state.held !== lastHeld) {
+      movementOpen = Boolean(state.held) && innerWidth > 1100;
+      lastHeld = state.held;
+    }
+    $("move-controls").hidden = !state.held;
+    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
+    $("manipulation-pad").hidden = !state.held || !movementOpen;
   let last = performance.now(),
     accumulator = 0,
     frames = [],
@@ -414,15 +445,20 @@ try {
     const elapsed = (now - last) / 1000;
     const dt = Math.min(0.05, elapsed);
     last = now;
-    if (document.hidden) return;
-    accumulator += dt;
-    while (accumulator >= 1 / 60) {
-      physics.step();
-      accumulator -= 1 / 60;
+    if (document.hidden || presentation.paused) return;
+    if (presentation.locked && readyFrames >= 3 && !presentation.needsRender) return;
+    if (!presentation.locked) {
+      accumulator += dt;
+      while (accumulator >= 1 / 60) {
+        physics.step();
+        accumulator -= 1 / 60;
+      }
+      lab.update(dt);
+      bench.controls.update();
     }
-    lab.update(dt);
-    bench.controls.update();
+    presentation.update();
     bench.render(dt);
+    organSlide.render();
     frames.push(elapsed);
     if (lab.held || lab.cutting) {
       manipulationFrames.push(elapsed);
@@ -432,11 +468,20 @@ try {
     if (++readyFrames === 3) {
       $("loading").classList.add("is-hidden");
       document.documentElement.dataset.ready = "true";
+      presentation.ready();
     }
   });
   window.__scalpless = {
     getDebug: () => ({
       ...lab.getDebug(),
+      presentation: presentation.getDebug(),
+      appearance: specimen.appearance ?? "natural",
+      geometryBounds: specimen.getBounds?.() ?? Object.fromEntries(
+        [...specimen.parts].map(([id,part]) => {
+          const box = new Box3().setFromObject(part.group, true);
+          return [id, {min:box.min.toArray(),max:box.max.toArray()}];
+        }),
+      ),
       fps: frames.length / frames.reduce((a, b) => a + b, 0),
       manipulationFps: manipulationFrames.length
         ? manipulationFrames.length /
@@ -456,10 +501,12 @@ try {
       ),
       handTracking: handTracking.getDebug(),
       anatomyView: specimen.anatomyView ?? false,
+      organStudy: organSlide.getDebug(),
     }),
   };
 } catch (error) {
   console.error(error);
+  if (parent !== window) parent.postMessage({type:"scalpless:lab-error"}, location.origin);
   $("loading").innerHTML =
     `<button class="icon-button" aria-label="The 3D bench could not start. Reload the page.">${icon("alert")}</button><span class="sr-only">The 3D bench could not start. Reload this page in a browser with WebGL enabled.</span>`;
   $("loading").querySelector("button").onclick = () => location.reload();
