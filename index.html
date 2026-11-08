@@ -10,14 +10,11 @@
     />
     <title>Scalpless — A closer look at life</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preload" as="image" href="./art/landing-onion-reference.webp" />
   </head>
   <body>
     <a class="skip-link" href="#story">Skip to exploration</a>
-    <div class="atmosphere" aria-hidden="true">
-      <div class="lab-glow"></div>
-      <div class="lab-vessel vessel-one"></div>
-      <div class="lab-vessel vessel-two"></div>
-    </div>
+    <div class="atmosphere" aria-hidden="true"></div>
     <header class="site-header">
       <a class="wordmark" href="#top" aria-label="Scalpless home"
         ><svg viewBox="0 0 32 38" aria-hidden="true">
@@ -40,6 +37,24 @@
         ><span class="story-anchor anchor-explore" id="explore"></span
         ><span class="story-anchor anchor-features" id="features"></span>
         <div class="story-stage">
+          <div class="onion-visual">
+            <img
+              class="reference-onion"
+              src="./art/landing-onion-reference.webp"
+              width="471"
+              height="503"
+              alt=""
+              aria-hidden="true"
+              fetchpriority="high"
+              decoding="async"
+            />
+            <div
+              id="landing-scene"
+              class="landing-scene"
+              role="img"
+              aria-label="The original onion image blends into a three-dimensional cutaway that becomes smaller and rotates as you scroll"
+            ></div>
+          </div>
           <div class="model-shadow" aria-hidden="true"></div>
           <div class="orbital orbital-one" aria-hidden="true"></div>
           <div class="orbital orbital-two" aria-hidden="true"></div>
@@ -49,7 +64,11 @@
             aria-hidden="true"
             inert
           >
-            <article class="future-card frog-card">
+            <a
+              class="future-card frog-card"
+              href="./lab.html?specimen=frog"
+              aria-label="Open frog dissection"
+            >
               <span class="card-title"><i></i>Frog</span
               ><svg
                 class="frog-drawing"
@@ -64,8 +83,8 @@
                 />
                 <circle cx="62" cy="45" r="3" />
                 <circle cx="98" cy="45" r="3" /></svg
-              ><span class="coming-label">COMING LATER</span>
-            </article>
+              ><span class="coming-label">EXPLORE FROG ↗</span>
+            </a>
             <article class="onion-card">
               <div class="card-topline">
                 <span class="card-title"><i></i>Onion</span
@@ -124,12 +143,6 @@
               ><span class="coming-label">COMING LATER</span>
             </article>
           </div>
-          <div
-            id="landing-scene"
-            class="landing-scene"
-            role="img"
-            aria-label="A three-dimensional cutaway onion that becomes smaller and rotates as you scroll"
-          ></div>
           <div class="model-loading" role="status">
             <span></span><span class="sr-only">Loading the 3D onion</span>
           </div>
@@ -173,7 +186,10 @@
               ><b></b>
             </div>
             <h2>A whole world.<br />One layer <br />at a time.</h2>
-            <p>Begin with an onion.<br />More specimens are on the horizon.</p>
+            <p>
+              Peel an onion. Explore a frog.<br />A different world beneath each
+              surface.
+            </p>
             <a class="primary-cta" href="./lab.html"
               >Start Dissection <span aria-hidden="true">↗</span></a
             >
@@ -249,8 +265,9 @@
             </summary>
             <p>
               The onion lab is ready to explore, with a supported incision,
-              removable layers, and a thin epidermis patch. Frog anatomy and
-              microscopic exploration are planned for later.
+              removable layers, and a thin epidermis patch. The frog prototype
+              lets you open the abdomen and remove simplified internal organs.
+              Microscopic exploration is planned for later.
             </p>
           </details>
           <details>

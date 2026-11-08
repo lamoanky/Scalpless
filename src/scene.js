@@ -6,7 +6,7 @@ import { createRenderPipeline } from "./render-pipeline.js";
 import { createContactShadows } from "./contact-shadows.js";
 import { createLabEnvironment } from "./lab-environment.js";
 
-export async function createBench(host) {
+export async function createBench(host, view = {}) {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
@@ -40,8 +40,10 @@ export async function createBench(host) {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.ROTATE,
   };
-  const homePosition = new THREE.Vector3(0.18, 0.213, 0.35),
-    homeTarget = new THREE.Vector3(-0.078, 0.05, -0.012);
+  const homePosition = new THREE.Vector3(
+      ...(view.position ?? [0.18, 0.213, 0.35]),
+    ),
+    homeTarget = new THREE.Vector3(...(view.target ?? [-0.078, 0.05, -0.012]));
   function home() {
     const mobile = host.clientWidth < 650;
     controls.target.copy(homeTarget);

@@ -260,6 +260,46 @@ try {
   await page.locator("#hand-tracking-open").click();
   assert(await page.locator("#tracking-toggle").isVisible());
   await page.screenshot({ path: "output/scalpless-hand-tracking-mobile.png" });
+  // The same recognizer and camera ownership drive the separate frog specimen.
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto(new URL("./lab.html?specimen=frog", base).href);
+  await page.waitForFunction(
+    () => document.documentElement.dataset.ready === "true",
+  );
+  await page.locator("#hand-tracking-open").click();
+  await page.locator("#tracking-gain").evaluate((e) => {
+    e.value = "1";
+    e.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await start(page);
+  await stroke(0, 96);
+  assert(
+    (await debug()).state.cutOpen,
+    "Gesture tracing opens the frog abdomen",
+  );
+  for (const id of ["abdomen", "liver"]) {
+    grasp = (await debug()).graspPoints[id];
+    await frame(observation("pinch", grasp));
+    assert.equal(
+      (await debug()).state.held,
+      id,
+      `Gesture pinch acquires frog ${id}`,
+    );
+    await sequence(
+      Array.from({ length: 25 }, (_, i) =>
+        observation("pinch", {
+          x: grasp.x - (0.2 * (i + 1)) / 25,
+          y: grasp.y - (0.04 * (i + 1)) / 25,
+        }),
+      ),
+    );
+    await frame(empty);
+    assert.equal((await debug()).state.held, null);
+    assert((await debug()).state.pieces[id].detached);
+  }
+  assert((await debug()).state.available.some((p) => p.id === "stomach"));
+  await page.keyboard.press("Escape");
+  assert.equal((await debug()).handTracking.liveTracks, 0);
   await context.close();
 
   const denied = await browser.newContext({
@@ -313,6 +353,7 @@ try {
       "Escape",
       "mobile setup",
       "permission denial",
+      "frog gesture incision, panel removal and liver placement",
     ],
   };
   await writeFile(

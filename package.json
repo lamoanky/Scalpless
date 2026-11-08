@@ -16,7 +16,9 @@
     "capture:landing": "node scripts/capture-landing.mjs",
     "gesture:sandbox": "node server.js",
     "test:sandbox": "playwright test",
-    "test:tracking": "node scripts/check-hand-tracking.mjs"
+    "test:tracking": "node scripts/check-hand-tracking.mjs",
+    "test:frog": "node scripts/check-frog.mjs",
+    "capture:frog": "node scripts/check-frog.mjs --record"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

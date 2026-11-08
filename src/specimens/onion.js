@@ -633,7 +633,103 @@ export async function createOnion(scene) {
       eg.userData.rest[i * 3 + 2] = z + dir.z * shift;
     }
   }
+  // Specimen-specific interaction rules keep the shared lab independent of anatomy.
+  for (const part of parts.values())
+    part.interaction = part.id === "section" ? "lift" : "peel";
+  function isOpen(states) {
+    return (
+      states.section.detached &&
+      parts.get("section").group.position.distanceTo(ONION_ORIGIN) > 0.025
+    );
+  }
+  let membraneReady = false;
   return {
+    id: "onion",
+    label: "Onion",
+    openingPartId: "section",
+    isOpen,
+    available(states) {
+      const result = [parts.get("section")];
+      if (isOpen(states)) {
+        for (let i = 0; i < 8; i++) {
+          const part = parts.get(`layer-${i}`);
+          result.push(part);
+          if (!states[part.id].detached) break;
+        }
+      }
+      if (states["layer-1"].detached) result.push(parts.get("epidermis"));
+      return result;
+    },
+    colliderParts(states) {
+      const ids = states.section.detached ? [] : ["section"];
+      ids.push(
+        [...parts.values()].find(
+          (p) => p.id.startsWith("layer-") && !states[p.id].detached,
+        )?.id ?? "core",
+      );
+      return ids.map((id) => parts.get(id));
+    },
+    graspPoint(part) {
+      if (part.id === "section")
+        return new THREE.Vector3(0.017, 0.059, 0.019).applyMatrix4(
+          part.group.matrixWorld,
+        );
+      const mesh = part.meshes[0],
+        p = mesh.geometry.attributes.position;
+      const index =
+        part.id === "epidermis"
+          ? Math.min(p.count - 1, Math.floor(p.count * 0.75))
+          : Math.min(p.count - 1, 31 * 49 + 48);
+      return new THREE.Vector3()
+        .fromBufferAttribute(p, index)
+        .applyMatrix4(mesh.matrixWorld);
+    },
+    graspEdge(part, contact) {
+      if (part.id === "epidermis") return undefined;
+      let best = Infinity,
+        edge = null;
+      const p = part.meshes[0].geometry.attributes.position;
+      for (let row = 5; row <= 41; row++)
+        for (const col of [0, 48]) {
+          const vertex = row * 49 + col;
+          const point = new THREE.Vector3()
+            .fromBufferAttribute(p, vertex)
+            .applyMatrix4(part.group.matrixWorld);
+          const distance = point.distanceTo(contact);
+          if (distance < best) {
+            best = distance;
+            edge = { vertex, point };
+          }
+        }
+      return best <= 0.018 ? edge : null;
+    },
+    restoreAttachments(states) {
+      membraneReady = false;
+      prepareMembrane(
+        states["layer-1"].bend,
+        new THREE.Vector3(...states["layer-1"].direction),
+      );
+    },
+    updateAttachments(states) {
+      if (!states["layer-1"].detached || states.epidermis.detached) return;
+      const e = parts.get("epidermis"),
+        carrier = parts.get("layer-1");
+      e.group.visible = true;
+      if (!membraneReady) {
+        prepareMembrane(
+          states["layer-1"].bend,
+          new THREE.Vector3(...states["layer-1"].direction),
+        );
+        deform(
+          e,
+          states.epidermis.bend,
+          new THREE.Vector3(...states.epidermis.direction),
+        );
+        membraneReady = true;
+      }
+      e.group.position.copy(carrier.group.position);
+      e.group.quaternion.copy(carrier.group.quaternion);
+    },
     parts,
     roots,
     guide,

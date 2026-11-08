@@ -54,7 +54,35 @@ try {
   );
   await scroll(0);
   const first = await debug();
+  assert.equal(
+    first.photoOpacity,
+    1,
+    "Opening preserves the reference photograph",
+  );
+  assert.equal(
+    await page
+      .locator("#landing-scene")
+      .evaluate((e) => getComputedStyle(e).opacity),
+    "0",
+  );
+  assert(
+    await page
+      .locator(".reference-onion")
+      .evaluate((e) => e.complete && e.naturalWidth > 0),
+  );
   await page.screenshot({ path: "output/landing-hero.png" });
+  await scroll(0.18);
+  assert(
+    Math.abs((await debug()).modelReveal - 0.5) < 0.005,
+    "Scroll blends the photo and live model",
+  );
+  await page.screenshot({ path: "output/landing-photo-transition.png" });
+  await scroll(0.28);
+  assert(
+    (await debug()).photoOpacity < 0.001,
+    "The photograph clears after the handoff",
+  );
+  await scroll(0);
   const samples = [first];
   for (const [p, name] of [
     [0.25, null],
@@ -79,6 +107,11 @@ try {
   assert(
     Math.abs((await debug()).scale - first.scale) < 0.01,
     "Reverse scroll restores close-up",
+  );
+  assert.equal(
+    (await debug()).photoOpacity,
+    1,
+    "Reverse scroll restores the original image",
   );
   await page.getByRole("link", { name: "Explore", exact: true }).click();
   await page.waitForFunction(
@@ -125,6 +158,11 @@ try {
   const pausedEnd = await debug();
   assert.equal(pausedEnd.modelRotation, paused.modelRotation);
   assert.equal(pausedEnd.scale, paused.scale);
+  assert.equal(
+    pausedEnd.photoOpacity,
+    1,
+    "Motion off retains a static reference image",
+  );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
   await ready();
@@ -155,6 +193,31 @@ try {
     await page.screenshot({ path: `output/landing-mobile-${name}.png` });
   }
   assert.deepEqual(errors, [], "No browser errors");
+  const fallback = await browser.newPage({
+    viewport: { width: 1600, height: 1000 },
+  });
+  await fallback.route("**/environments/*.hdr", (route) => route.abort());
+  await fallback.goto(url);
+  await fallback.waitForFunction(() =>
+    document.documentElement.classList.contains("model-error"),
+  );
+  await fallback.evaluate(() =>
+    scrollTo({ top: innerHeight, behavior: "instant" }),
+  );
+  await fallback.waitForTimeout(600);
+  assert.equal(
+    await fallback
+      .locator(".reference-onion")
+      .evaluate((e) => getComputedStyle(e).opacity),
+    "1",
+    "Failed WebGL assets preserve the reference image",
+  );
+  assert(
+    await fallback
+      .getByRole("link", { name: "Get Started", exact: true })
+      .isVisible(),
+  );
+  await fallback.close();
   await writeFile(
     "output/landing-validation.json",
     JSON.stringify(
@@ -168,6 +231,9 @@ try {
         })),
         checks: [
           "shrinks",
+          "reference photograph first",
+          "smooth photo to model handoff",
+          "reference fallback on model load failure",
           "spins",
           "reverse scroll",
           "navigation",

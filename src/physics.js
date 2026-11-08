@@ -61,7 +61,22 @@ export async function createPhysics() {
       .setAngularDamping(5)
       .setCcdEnabled(true);
     const body = world.createRigidBody(desc);
-    if (part.layer !== null && !part.fixed) {
+    if (part.compoundCollider && part.collisionGeometries) {
+      for (const geometry of part.collisionGeometries) {
+        const points = geometry.attributes.position;
+        const vertices = [];
+        for (let i = 0; i < points.count; i += 3)
+          vertices.push(points.getX(i), points.getY(i), points.getZ(i));
+        const component = RAPIER.ColliderDesc.convexHull(
+          new Float32Array(vertices),
+        );
+        if (component)
+          world.createCollider(
+            component.setDensity(240).setFriction(0.8).setRestitution(0.015),
+            body,
+          );
+      }
+    } else if (Number.isInteger(part.layer) && !part.fixed) {
       // Several small convex patches preserve a peeled shell's concavity.
       const p = part.meshes[0].geometry.attributes.position,
         innerOffset = 43 * 49;
@@ -126,34 +141,42 @@ export async function createPhysics() {
       part.group.quaternion.set(q.x, q.y, q.z, q.w);
     }
   }
-  function syncSpecimen(parts, states) {
-    const ids = [];
-    if (!states.section.detached) ids.push("section");
-    ids.push(
-      [...parts.values()].find(
-        (p) => p.id.startsWith("layer-") && !states[p.id].detached,
-      )?.id ?? "core",
-    );
-    const key = ids.join();
+  function syncSpecimen(specimen, states) {
+    const attached = specimen.colliderParts(states);
+    const key = specimen.id + attached.map((p) => p.id).join();
     if (key === specimenKey) return;
     specimenKey = key;
     for (const collider of specimenColliders)
       world.removeCollider(collider, true);
     specimenColliders = [];
-    for (const id of ids) {
-      const part = parts.get(id),
-        vertices = [];
-      for (const mesh of part.meshes) {
-        const rest = mesh.geometry.userData.rest;
-        for (let i = 0; i < rest.length; i += 9)
-          vertices.push(rest[i], rest[i + 1], rest[i + 2]);
-      }
-      const desc = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices));
-      if (desc) {
-        desc
-          .setTranslation(...part.initialPosition.toArray())
-          .setFriction(0.75);
-        specimenColliders.push(world.createCollider(desc));
+    for (const part of attached) {
+      // A hollow body uses one hull per component so its cavity stays open.
+      const collisionMeshes =
+        part.collisionGeometries?.map((geometry) => ({
+          geometry,
+          userData: {},
+        })) ?? part.meshes;
+      const groups = part.compoundCollider
+        ? collisionMeshes.map((m) => [m])
+        : [collisionMeshes];
+      for (const meshes of groups) {
+        const vertices = [];
+        for (const mesh of meshes) {
+          if (mesh.userData.noCollision) continue;
+          const rest =
+            mesh.geometry.userData.rest ??
+            mesh.geometry.attributes.position.array;
+          for (let i = 0; i < rest.length; i += 9)
+            vertices.push(rest[i], rest[i + 1], rest[i + 2]);
+        }
+        if (vertices.length < 12) continue;
+        const desc = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices));
+        if (desc) {
+          desc
+            .setTranslation(...part.initialPosition.toArray())
+            .setFriction(0.75);
+          specimenColliders.push(world.createCollider(desc));
+        }
       }
     }
   }

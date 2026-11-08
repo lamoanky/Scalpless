@@ -1,6 +1,6 @@
 # Scalpless
 
-A scroll-driven landing page and hands-on 3D onion dissection bench. The specimen, platform and instruments are rendered meshes, with direct surface contact, constrained peeling, and Rapier collisions for released tissue. Built with Vite, vanilla JavaScript and Three.js.
+A scroll-driven landing page and hands-on 3D onion and frog dissection bench. The specimen, platform and instruments are rendered meshes, with direct surface contact, constrained peeling, and Rapier collisions for released tissue. Built with Vite, vanilla JavaScript and Three.js.
 
 ## Run
 
@@ -15,11 +15,13 @@ Open http://127.0.0.1:5173 for the landing page. **Start Dissection** and **Get 
 
 ## Landing page
 
-Scroll through three stages: a cropped onion close-up, a full cutaway with orbit lines, and a specimen collection. The same live 3D onion gets smaller and completes two rotations as the scroll advances. Scrolling back reverses the motion. All movement derives from scroll position; there is no automatic tour.
+Scroll through three stages: a cropped onion close-up, a full cutaway with orbit lines, and a specimen collection. The opening preserves the original onion image. During the first scroll interval, an aligned, additive crossfade hands it over to the live 3D onion; the model then gets smaller and completes two rotations as the scroll advances. Scrolling back reverses the motion. All movement derives from scroll position; there is no automatic tour.
 
-The landing page reuses the specimen geometry, 4K textures, local HDRI and blue lab backdrop. Its framing and material adjustments affect only the landing instance. The lab still starts intact. Onion is the available specimen; Frog and Microscopy are explicitly marked as coming later.
+The landing page reuses the specimen geometry, 4K textures and local HDRI. Its background moves from a blue close-up with diagonal light bands into a softly defocused glass laboratory, then a specimen collection with luminous floor rings and the reference's silver instruments. These are three static image plates blended by scroll position, so the backdrop does not add to the 3D render workload. Its framing and material adjustments affect only the landing instance. The lab still starts intact. Onion and a basic frog prototype are available; Microscopy is marked as coming later.
 
-The page adapts to narrow screens, uses native navigation links and FAQ disclosures, and respects reduced-motion preferences. **Motion on/off** switches between animated framing and a static specimen while keeping all three sections accessible.
+The page adapts to narrow screens, uses native navigation links and FAQ disclosures, and respects reduced-motion preferences. **Motion on/off** switches between animated framing and a static reference image while keeping all three sections accessible. The reference image also remains visible if 3D assets fail to load.
+
+`python3 scripts/prepare-landing-art.py` regenerates `public/art/landing-onion-reference.webp` and the three `landing-*-background.webp` plates from the saved reference and retouched lab floor. The onion and instruments retain the source pixels, with conventional matte extraction and annotation cleanup. Resampling improves enlargement but cannot recover detail beyond the original 471 × 503 onion crop. The background combines the retouched floor with recreated glassware, reflections and lighting; it is not a pixel-for-pixel copy of the three-panel landing mockup.
 
 ## Working at the bench
 
@@ -34,9 +36,17 @@ The bench starts with icons only, with a glass toolbar at the lower left. Openin
 
 There are no timing challenges. Controls have 48 px minimum targets, visible focus, native buttons, accessible names and brief screen-reader announcements. Reduced-motion preferences disable camera inertia, interface transitions and animated relaxation of released attached tissue. Direct manipulation and gravitational settling remain available.
 
+## Frog dissection
+
+Choose the frog icon at the upper left, the landing page's frog card, or open http://127.0.0.1:5173/lab.html?specimen=frog. Trace the hinted oval incision around the abdominal panel, lift it with forceps, then inspect and remove the heart, liver, two lungs, stomach and intestines. Move the liver aside to reach the deeper digestive organs. Mouse, keyboard, and the existing webcam adapter share the same lab actions. The onion icon returns to the onion bench; switching specimens starts a fresh session.
+
+The custom frog has continuous tapered limbs, webbed feet, gold irises, authored 2K skin/tissue maps and irregular organ lobes. Natural ventral skin is the default; the layers button beside the specimen selector reveals a blue translucent anatomy view. This view does not change dissection progress, and reset restores natural skin. Organs remain pre-separated rigid pieces, and the abdominal panel combines skin and muscle. Connective-tissue cutting and detailed anatomical validation are not included. See [frog model resources and implementation notes](docs/frog-model.md) for the visual reference, supported workflow and import requirements for an exact licensed replacement.
+
+`npm run test:frog` checks the frog workflow; `npm run capture:frog` also records a walkthrough.
+
 ## Webcam hand controls
 
-Open the lab, click the **camera icon at the upper right**, then **Start camera** and allow your browser to use it. This requests video only. The landing page never starts the camera. The onion lab loads the pinned MediaPipe runtime, WASM and hand model from local app assets; frames stay in the browser and are not recorded or uploaded.
+Open the lab, click the **camera icon at the upper right**, then **Start camera** and allow your browser to use it. This requests video only. The landing page never starts the camera. Both labs load the pinned MediaPipe runtime, WASM and hand model from local app assets; frames stay in the browser and are not recorded or uploaded.
 
 - Move your index fingertip to position the cursor. The view is mirrored horizontally. Movement sensitivity defaults to 1.50×; reduce it for finer tracing.
 - Extend only your index, with the other fingers curled, for 0.3 seconds to activate the scalpel. Trace the supported seam. The lightbulb shows its position and remains usable during tracking. Partial strokes accumulate exactly as with the mouse.
@@ -46,13 +56,14 @@ Open the lab, click the **camera icon at the upper right**, then **Start camera*
 
 Choose a connected camera before starting. Camera rotation supports sideways mounts. Tracking loss, stalled video, disconnecting the camera, leaving the page or hiding the tab ends active cuts and releases held tissue. Cancelling startup also stops any camera stream that arrives after a delayed permission response. Camera denial leaves the mouse controls available and offers a retry.
 
-The integration reuses `GestureTracker`, stable hand assignment and the branch's visibility guard. It maps the tracked fingertip/pinch into the onion canvas, then uses the existing ray contact, cut coverage, constrained peeling and release physics. It does not apply the practice sandbox's unrelated world coordinates to the onion. Height and full rigged-hand visualization remain available in the retained sandbox rather than driving this screen-based bench adapter. Camera pose accuracy still depends on lighting, visibility and the actual webcam.
+The integration reuses `GestureTracker`, stable hand assignment and the branch's visibility guard. It maps the tracked fingertip/pinch into the active specimen canvas, then uses the existing ray contact, cut coverage, constrained peeling and release physics. It does not apply the practice sandbox's unrelated world coordinates to the onion. Height and full rigged-hand visualization remain available in the retained sandbox rather than driving this screen-based bench adapter. Camera pose accuracy still depends on lighting, visibility and the actual webcam.
 
 The original gesture sandbox is preserved at `npm run gesture:sandbox` → http://localhost:3000; its detailed setup and rigged-hand behavior are in [README-3D.md](README-3D.md). It is separate from the Vite landing/lab routes and retains its original CDN dependencies.
 
 ## Architecture
 
 - `src/specimens/onion.js`: replaceable procedural specimen definition, closed shells, capped faces, materials, cut region, grasp points, membrane and constrained deformation.
+- `src/specimens/frog.js`: custom ventral frog, abdominal panel, six organ pieces, access rules and collision components.
 - `src/lab-controller.js`: attachment/separation state, seam coverage, manipulation, completed-operation snapshots, undo/reset and observable state.
 - `src/input.js`: mouse/keyboard adapter, input ownership and the existing six `input:*` event listeners.
 - `src/onion-hand-input.js`: gesture recognition adapter using the merged branch's `gestures.js`, `hand-pose.js` and `tracking-quality.js`.
@@ -84,7 +95,7 @@ Dispatch `CustomEvent`s on `window`. Coordinates are normalized **0…1 within t
 | `input:cutend`     | `{ x, y }`                                      |
 | `input:zoom`       | `{ delta }` — positive moves closer             |
 
-Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning. Camera events add `source: 'webcam'`; they are accepted only while the camera owns input. A tracking-loss move also carries `lost: true` to clear hover feedback. The recognizer's additive `z` is preserved, but the onion controller uses canvas X/Y ray contact and its existing manipulation plane, rather than interpreting monocular height as physical depth.
+Start events select the corresponding tool. Move events update contact or the held target; end events commit the stroke or release the piece. The pointer adapter sends these same six events. Keyboard buttons use the same controller actions without requiring precise pointer positioning. Camera events add `source: 'webcam'`; they are accepted only while the camera owns input. A tracking-loss move also carries `lost: true` to clear hover feedback. The recognizer's additive `z` is preserved, but the lab controller uses canvas X/Y ray contact and its existing manipulation plane, rather than interpreting monocular height as physical depth.
 
 `lab:statechange` publishes a cloned state object: `tool`, `hints`, `cut`, `cutOpen`, `held`, `selected`, `undo`, `available` and per-piece `detached`, `separation`, `bend`, `direction`. Future educational UI can observe it. `window.__scalpless.getDebug()` provides diagnostics and projected contact points for repeatable browser validation; it is not an action API.
 
@@ -112,9 +123,9 @@ Browser checks verify the absence of visible interface text and the presence of 
 
 ## Deliberate limits
 
-This is an educational MVP approximation, not a validated tissue or surgical simulator. It supports one prepared longitudinal incision, nested removable half-shells, and one membrane patch. It does not perform arbitrary mesh cutting, unrestricted tearing or full soft-body physics. A single supported incision unlocks a pre-segmented section. The onion remains stabilized on the platform, and placed concave shells use approximate collision shapes.
+This is an educational MVP approximation, not a validated tissue or surgical simulator. The onion supports one prepared longitudinal incision, nested removable half-shells, and one membrane patch. The frog supports one prepared abdominal opening and six removable organ pieces. It does not perform arbitrary mesh cutting, unrestricted tearing or full soft-body physics. A single supported incision unlocks a pre-segmented section. The onion remains stabilized on the platform, and placed concave shells use approximate collision shapes.
 
-A future imported model needs closed removable parts, attachments, cut regions and physical metadata. A frog should be a separate specimen definition. A wand can adapt to the existing input contract. Photograph-to-dissection would first need specimen identification and a prepared anatomical asset; unseen internal anatomy is not reconstructed here.
+A future imported model needs closed removable parts, attachments, cut regions and physical metadata. The frog has a separate specimen definition. A wand can adapt to the existing input contract. Photograph-to-dissection would first need specimen identification and a prepared anatomical asset; unseen internal anatomy is not reconstructed here.
 
 Chatbot panels, microscopy, quizzes, wand input, n8n, backend services and deployment are deferred.
 

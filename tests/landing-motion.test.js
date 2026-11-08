@@ -41,3 +41,22 @@ test("narrow viewport keeps the final model inside its specimen card", () => {
   assert(f.y + f.height / 2 < 0.87);
   assert(f.x > 0.4 && f.x < 0.84);
 });
+
+test("reference image hands off smoothly to the mesh and returns on reverse scroll", () => {
+  assert.equal(landingFrame(0).photoOpacity, 1);
+  assert.equal(landingFrame(0.08).modelReveal, 0);
+  assert(Math.abs(landingFrame(0.18).modelReveal - 0.5) < 1e-9);
+  assert.equal(landingFrame(0.28).modelReveal, 1);
+  assert.equal(landingFrame(1).photoOpacity, 0);
+  for (let i = 1; i <= 1000; i++) {
+    const before = landingFrame((i - 1) / 1000),
+      after = landingFrame(i / 1000);
+    assert(after.modelReveal >= before.modelReveal);
+    assert(after.modelReveal - before.modelReveal < 0.008);
+    assert.equal(after.photoOpacity + after.modelReveal, 1);
+  }
+  assert.equal(landingFrame(0).modelReveal, 0);
+  assert.equal(landingFrame(0.18).rotation, landingFrame(0).rotation);
+  for (const p of [0, 0.18, 0.5, 1])
+    assert.equal(landingFrame(p, { still: true }).photoOpacity, 1);
+});

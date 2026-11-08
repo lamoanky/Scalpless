@@ -7,6 +7,7 @@ import { landingFrame } from "./landing-motion.js";
 const story = document.querySelector(".scroll-story");
 const stage = document.querySelector(".story-stage");
 const host = document.querySelector("#landing-scene");
+const photo = document.querySelector(".reference-onion");
 const panels = [...document.querySelectorAll("[data-panel]")];
 const gallery = document.querySelector(".specimen-gallery");
 const motionButton = document.querySelector(".motion-toggle");
@@ -23,7 +24,9 @@ let raf = 0,
   modelHeight = 0.13,
   scene,
   camera,
-  currentFrame;
+  currentFrame,
+  modelReady = false,
+  readyFade = 0;
 const still = () => userMotionPreference ?? reducedMotion.matches;
 
 function readScroll() {
@@ -47,7 +50,21 @@ function renderFrame(now) {
     still: still(),
   });
   currentFrame = frame;
+  // The reference image stays visible during loading and on WebGL failure.
+  // A single scroll value drives both layers, including reverse scrolling.
+  if (modelReady)
+    readyFade = still() ? 1 : THREE.MathUtils.damp(readyFade, 1, 12, dt);
+  if (readyFade > 0.999) readyFade = 1;
+  const reveal = frame.modelReveal * readyFade;
+  photo.style.height = `${frame.height * height}px`;
+  photo.style.left = `${frame.x * width}px`;
+  photo.style.top = `${frame.y * height}px`;
+  photo.style.opacity = 1 - reveal;
+  host.style.opacity = reveal;
+  photo.style.filter = `blur(${Math.sin(reveal * Math.PI) * 3}px)`;
   document.documentElement.style.setProperty("--progress", frame.progress);
+  document.documentElement.style.setProperty("--laboratory", frame.laboratory);
+  document.documentElement.style.setProperty("--collection", frame.gallery);
   stage.style.setProperty("--gallery", frame.gallery);
   stage.style.setProperty("--orbit", frame.orbit);
   stage.classList.toggle("at-collection", frame.active === 2);
@@ -67,14 +84,15 @@ function renderFrame(now) {
   if (model) {
     model.scale.setScalar((frame.height * 2) / modelHeight);
     model.position.set(
-      ((frame.x - 0.5) * 2 * width) / height,
-      (0.5 - frame.y) * 2,
+      ((frame.x - 0.5) * 2 * width) / height -
+        frame.height * 0.12 * frame.photoAlignment,
+      (0.5 - frame.y) * 2 + frame.height * 0.05 * frame.photoAlignment,
       0,
     );
-    model.rotation.set(0.08, frame.rotation, -0.025);
-    renderer.render(scene, camera);
+    model.rotation.set(0.08, frame.rotation, frame.tilt);
+    if (reveal > 0) renderer.render(scene, camera);
   }
-  if (progress !== target) requestFrame();
+  if (progress !== target || (modelReady && readyFade < 1)) requestFrame();
 }
 function requestFrame() {
   if (!raf && !document.hidden) raf = requestAnimationFrame(renderFrame);
@@ -206,6 +224,8 @@ try {
   resize();
   // Compile before revealing the scene, avoiding a visible shader warm-up hitch.
   await renderer.compileAsync(scene, camera);
+  modelReady = true;
+  readyFade = currentFrame?.modelReveal > 0 ? 0 : 1;
   document.documentElement.classList.add("model-ready");
   document.documentElement.dataset.ready = "true";
   window.__scalplessLanding = {

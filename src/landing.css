@@ -13,6 +13,8 @@
   --progress: 0;
   --gallery: 0;
   --orbit: 0;
+  --laboratory: 0;
+  --collection: 0;
 }
 * {
   box-sizing: border-box;
@@ -71,49 +73,24 @@ summary:focus-visible {
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background:
-    linear-gradient(100deg, #305b99db 0%, #6792c7b0 36%, #c2d9ff38 78%),
-    url("/art/lab-reference-background.webp") center/cover no-repeat;
+  background: #9ab9e6 url("/art/landing-reference-background.webp") center /
+    100% 100% no-repeat;
 }
+.atmosphere::before,
 .atmosphere::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 78% 22%, #d2e4ff70, transparent 60%),
-    linear-gradient(90deg, #31598a30, transparent 80%);
+  background: center / 100% 100% no-repeat;
   pointer-events: none;
 }
-.lab-glow {
-  position: absolute;
-  inset: 0;
-  opacity: 0.65;
-  background: radial-gradient(ellipse at 60% 70%, #e8f4ffa0, transparent 55%);
+.atmosphere::before {
+  background-image: url("/art/landing-lab-background.webp");
+  opacity: var(--laboratory);
 }
-.lab-vessel {
-  position: absolute;
-  bottom: 4vh;
-  border: 12px solid #effaff3d;
-  border-top: 6px solid #edf8ff55;
-  border-radius: 22% 22% 18% 18%;
-  box-shadow:
-    inset 20px 0 40px #eef6ff54,
-    14px 15px 28px #729ad92e;
-  filter: blur(9px);
-  opacity: calc(0.1 + var(--progress) * 0.65);
-  transform: translateY(calc((1 - var(--progress)) * 80px));
-}
-.vessel-one {
-  right: 3%;
-  width: 18vw;
-  height: 50vh;
-}
-.vessel-two {
-  right: 51%;
-  width: 13vw;
-  height: 24vh;
-  border-radius: 22px;
-  opacity: calc(var(--progress) * 0.45);
+.atmosphere::after {
+  background-image: url("/art/landing-collection-background.webp");
+  opacity: var(--collection);
 }
 .site-header {
   position: fixed;
@@ -219,10 +196,35 @@ summary:focus-visible {
   overflow: hidden;
   isolation: isolate;
 }
+.onion-visual {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  isolation: isolate;
+  pointer-events: none;
+}
+.reference-onion,
+.landing-scene {
+  mix-blend-mode: plus-lighter;
+}
+.reference-onion {
+  position: absolute;
+  z-index: 4;
+  left: 96%;
+  top: 100%;
+  height: 205svh;
+  width: auto;
+  max-width: none;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  will-change: opacity, transform;
+}
 .landing-scene {
   position: absolute;
   inset: 0;
   z-index: 3;
+  opacity: 0;
   pointer-events: none;
 }
 .landing-scene canvas {
@@ -360,9 +362,9 @@ h1 sup {
 .model-shadow {
   position: absolute;
   left: 56%;
-  top: 88%;
+  top: 94%;
   width: 34%;
-  height: 5%;
+  height: 7%;
   border-radius: 50%;
   background: radial-gradient(ellipse, #4e487d7a, transparent 68%);
   filter: blur(14px);
@@ -480,8 +482,17 @@ h1 sup {
   margin-top: 10px;
 }
 .frog-card {
+  text-decoration: none;
+  color: inherit;
   left: 44%;
   transform: perspective(600px) rotateY(17deg) rotateZ(-3deg);
+}
+.frog-card:hover {
+  background: #e5f8ff66;
+}
+.frog-card:focus-visible {
+  outline: 3px solid #effbff;
+  outline-offset: 5px;
 }
 .cells-card {
   left: 85%;
@@ -829,6 +840,11 @@ h1 sup {
   }
 }
 @media (max-width: 700px) {
+  .atmosphere,
+  .atmosphere::before,
+  .atmosphere::after {
+    background-size: cover;
+  }
   .site-header {
     height: 78px;
     padding: 0 20px;
@@ -998,15 +1014,6 @@ h1 sup {
     min-height: 40px;
     padding: 8px 11px;
   }
-  .lab-vessel {
-    width: 27vw;
-    right: 0;
-    height: 40vh;
-  }
-  .vessel-two {
-    right: 69%;
-    height: 24vh;
-  }
   .content-section {
     padding: 65px 7%;
   }
@@ -1060,10 +1067,11 @@ h1 sup {
   }
 }
 
-/* Keep small navigation readable over the brighter half of the lab. */
+/* White reference typography with a restrained blue shadow for definition. */
 .main-nav,
 .header-cta {
-  color: #254b78;
+  color: #f4f8ff;
+  text-shadow: 0 1px 7px #335e9580;
 }
 .site-header.past-story .main-nav,
 .site-header.past-story .header-cta {

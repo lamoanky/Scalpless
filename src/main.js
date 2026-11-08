@@ -7,6 +7,10 @@ import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
 
 const $ = (id) => document.getElementById(id);
+const specimenId =
+  new URLSearchParams(location.search).get("specimen") === "frog"
+    ? "frog"
+    : "onion";
 const paths = {
   inspect: "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
   scalpel: "m15 3 6 6-10 10-7 2 2-7L15 3Zm-9 11 5 5M14 5l5 5",
@@ -33,6 +37,9 @@ const paths = {
   membrane: "m4 6 12-3 5 15-12 3L4 6Zm1 5 12-3M7 16l12-3M9 5l5 15",
   alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
   reset: "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 6M4 12l1 6a8 8 0 0 0 14-2",
+  frog: "M8 5a3 3 0 1 0-4 4m12-4a3 3 0 1 1 4 4M7 7c-3 3-1 10 5 10s8-7 5-10M6 12l-4 3 4 2-2 4 6-4m8-5 4 3-4 2 2 4-6-4M9 9h.01M15 9h.01",
+  onion:
+    "M10 3c1 4-6 5-6 11a8 8 0 0 0 16 0c0-6-7-7-6-11M12 5c-6 6-6 14 0 17m0-17c6 6 6 14 0 17",
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
@@ -109,11 +116,52 @@ $("manipulation-pad").innerHTML = [
   .join("");
 
 try {
-  const bench = await createBench($("scene")),
-    onion = await createOnion(bench.scene),
+  const bench = await createBench(
+      $("scene"),
+      specimenId === "frog"
+        ? { position: [-0.02, 0.36, 0.21], target: [-0.078, 0.035, 0] }
+        : {},
+    ),
+    specimen =
+      specimenId === "frog"
+        ? await (await import("./specimens/frog.js")).createFrog(bench.scene)
+        : await createOnion(bench.scene),
     physics = await createPhysics(),
-    lab = new LabController(bench, onion, physics);
-  bench.setSpecimen(onion);
+    lab = new LabController(bench, specimen, physics);
+  bench.setSpecimen(specimen);
+  $("bench").setAttribute(
+    "aria-label",
+    `Interactive ${specimen.label.toLowerCase()} dissection bench`,
+  );
+  document.title = `Scalpless — ${specimen.label} dissection`;
+  const specimenSwitcher = document.createElement("nav");
+  specimenSwitcher.className = "specimen-switcher";
+  specimenSwitcher.setAttribute("aria-label", "Choose specimen");
+  specimenSwitcher.innerHTML = ["onion", "frog"]
+    .map(
+      (id) =>
+        `<a class="icon-button" href="./lab.html?specimen=${id}" aria-label="Open ${id} dissection" title="${id === "frog" ? "Frog · basic anatomy" : "Onion"}" ${id === specimenId ? 'aria-current="page"' : ""}>${icon(id)}</a>`,
+    )
+    .join("");
+  $("bench").append(specimenSwitcher);
+  let anatomyButton;
+  function setAnatomyView(enabled) {
+    if (!anatomyButton) return;
+    specimen.setAnatomyView(enabled);
+    anatomyButton.setAttribute("aria-pressed", String(enabled));
+  }
+  if (specimen.setAnatomyView) {
+    anatomyButton = document.createElement("button");
+    anatomyButton.id = "anatomy-view";
+    anatomyButton.className = "icon-button anatomy-toggle";
+    anatomyButton.type = "button";
+    anatomyButton.setAttribute("aria-label", "Translucent anatomy view");
+    anatomyButton.setAttribute("aria-pressed", "false");
+    anatomyButton.title = "Translucent anatomy view";
+    anatomyButton.innerHTML = icon("layers");
+    anatomyButton.onclick = () => setAnatomyView(!specimen.anatomyView);
+    $("bench").append(anatomyButton);
+  }
   const input = installInput(lab, bench);
   const handTracking = installHandTracking(bench, input);
   document.querySelectorAll("button[data-tool]").forEach((button) =>
@@ -153,6 +201,7 @@ try {
   $("reset").onclick = () => {
     closeMenus();
     lab.reset();
+    setAnatomyView(false);
   };
   $("piece-menu").onclick = () => {
     $("piece-picker").hidden = !$("piece-picker").hidden;
@@ -183,6 +232,7 @@ try {
   let optionKey = "",
     actionKey = "";
   function updateUI(state, message) {
+    anatomyButton?.setAttribute("aria-pressed", String(specimen.anatomyView));
     document
       .querySelectorAll("button[data-tool]")
       .forEach((b) =>
@@ -215,8 +265,9 @@ try {
           button.className = "icon-button tissue-choice";
           button.dataset.piece = p.id;
           button.setAttribute("aria-label", p.label);
+          button.title = p.label;
           button.innerHTML = icon(
-            p.id === "section"
+            p.interaction === "lift"
               ? "section"
               : p.id === "epidermis"
                 ? "membrane"
@@ -224,6 +275,7 @@ try {
           );
           // A progressively lighter pigment identifies deeper fleshy layers visually.
           const layer = Number(p.id.split("-")[1]);
+          if (p.color) button.style.setProperty("--tissue", p.color);
           if (Number.isFinite(layer))
             button.style.setProperty(
               "--tissue",
@@ -257,7 +309,8 @@ try {
           ? detached
             ? "Release tissue"
             : "Peel further"
-          : state.selected === "section" ||
+          : state.available.find((p) => p.id === state.selected)
+                ?.interaction === "lift" ||
               state.pieces[state.selected]?.detached
             ? "Lift selected piece"
             : "Grasp & peel";
@@ -285,13 +338,17 @@ try {
         : state.tool === "scalpel"
           ? state.cutOpen
             ? "The section is free. Switch to forceps to lift it."
-            : "Drag along the front seam. Short strokes add up. Right drag to look around."
+            : specimenId === "frog"
+              ? "Trace around the abdominal panel. Short strokes add up. Turn on hints to see the incision."
+              : "Drag along the front seam. Short strokes add up. Right drag to look around."
           : state.held
             ? detached
               ? "Drag to carry · Q / E to rotate · Release to place"
               : "Pull away to peel. Move back to relax. Esc to cancel."
             : state.cutOpen
-              ? "Grasp an exposed edge and pull gently. Right drag to look around."
+              ? specimenId === "frog"
+                ? "Lift the abdominal panel, then grasp exposed organs. Remove the liver to reach the stomach and intestines."
+                : "Grasp an exposed edge and pull gently. Right drag to look around."
               : "Make the incision with the scalpel first.";
     if (message && $("status").textContent !== message)
       $("status").textContent = message;
@@ -336,7 +393,19 @@ try {
           manipulationFrames.reduce((a, b) => a + b, 0)
         : null,
       physicsBodies: physics.bodies.size,
+      physicalPieces: Object.fromEntries(
+        [...physics.bodies].map(([id, { body }]) => [
+          id,
+          {
+            velocity: body.linvel(),
+            sleeping: body.isSleeping(),
+            colliders: body.numColliders(),
+            mass: body.mass(),
+          },
+        ]),
+      ),
       handTracking: handTracking.getDebug(),
+      anatomyView: specimen.anatomyView ?? false,
     }),
   };
 } catch (error) {
