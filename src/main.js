@@ -391,7 +391,6 @@ try {
       "aria-label",
       `Inspect ${specimen.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`,
     );
-    $("manipulation-pad").hidden = !state.held;
     if (state.held !== lastHeld) {
       movementOpen = Boolean(state.held) && innerWidth > 1100;
       lastHeld = state.held;
@@ -422,20 +421,23 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
-    if (state.held) lastPicked = state.held;
-    if (!state.cutOpen) lastPicked = null;
-    $("microscope-action").hidden = !inspectTarget() || state.tool !== "hand";
-    $("microscope-action").setAttribute(
-      "aria-label",
-      `Inspect ${specimen.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`,
-    );
-    if (state.held !== lastHeld) {
-      movementOpen = Boolean(state.held) && innerWidth > 1100;
-      lastHeld = state.held;
-    }
-    $("move-controls").hidden = !state.held;
-    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
-    $("manipulation-pad").hidden = !state.held || !movementOpen;
+  // The guided lesson follows the onion dissection.
+  if (specimen.id === "onion")
+    installLesson({
+      lab,
+      toggle: $("lesson-toggle"),
+      announce: (text) => {
+        $("status").textContent = text;
+      },
+      restart: () => $("reset").click(),
+      inputMode: () => bench.host.dataset.input ?? "mouse",
+      inputHost: bench.host,
+    });
+  else $("lesson-toggle").hidden = true;
+  // Build final-pose colliders while loading, avoiding a hull-generation hitch
+  // at the instant scroll releases the specimen to interactive physics.
+  physics.syncSpecimen(specimen, lab.states);
+  const presentation = await createLandingPresentation(bench, specimen);
   let last = performance.now(),
     accumulator = 0,
     frames = [],
