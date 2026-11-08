@@ -25,7 +25,7 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     <form id="teaching-ask" class="teaching-composer">
       <label class="context-sharing"><input id="teaching-share" type="checkbox" checked/><span class="sharing-check" aria-hidden="true">${icon("m6 12 4 4 8-9")}</span><span>Share current lab state<span id="teaching-context"></span></span></label>
       <label class="sr-only" for="teaching-question">Your biology question</label>
-      <div class="question-entry"><textarea id="teaching-question" rows="2" maxlength="${QUESTION_LIMIT}" placeholder="Ask a biology question…"></textarea><button class="icon-button" id="teaching-send" type="submit" aria-label="Send question">${icon("M12 20V4m-6 6 6-6 6 6")}</button><button class="icon-button" id="teaching-stop" type="button" aria-label="Stop answer" hidden>${icon("M6 6h12v12H6z")}</button></div>
+      <div class="question-entry"><textarea id="teaching-question" rows="2" maxlength="${QUESTION_LIMIT}" placeholder="Ask a biology question…"></textarea><button class="icon-button" id="teaching-send" type="submit" aria-label="Send question">${icon("M12 3.6c.3 0 .6.1.8.3l6.5 6.5c.4.4.4 1 0 1.4s-1 .4-1.4 0L13 6.9v13.2a1 1 0 0 1-2 0V6.9l-4.9 4.9c-.4.4-1 .4-1.4 0s-.4-1 0-1.4l6.5-6.5c.2-.2.5-.3.8-.3Z")}</button><button class="icon-button" id="teaching-stop" type="button" aria-label="Stop answer" hidden>${icon("M6 6h12v12H6z")}</button></div>
       <p id="teaching-status" class="teaching-status" role="status" aria-live="polite"></p>
     </form>`;
   root.append(launcher,panel);
