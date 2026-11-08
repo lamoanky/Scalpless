@@ -35,6 +35,29 @@ test('pinch events include height while older callers receive a finite default',
   assert.equal(events.find(e=>e.type==='input:pinchend').detail.z,.4);
   assert.equal(tracker.update([hand()],33).point.z,.5);
 });
+test('pinch stays active when touching fingers are marked occluded and a second hand appears',()=>{
+  const events=[],tracker=new GestureTracker((type,detail)=>events.push({type,detail}));
+  const closed=hand();closed[4]={...closed[8]};
+  const grip={x:-2.25,y:-.775,z:1.15};
+  const blocked=[[true,true,false,false,false]];
+  assert.equal(tracker.update([closed],0,['Left'],blocked,[],[closed],1,[],[grip]).mode,'hand');
+  assert.deepEqual(events.find(e=>e.type==='input:pinchstart').detail.world,grip);
+  const state=tracker.update([hand(),closed],33,['Right','Left'],[[],blocked[0]],[],[hand(),closed],1,[],[null,grip]);
+  assert.equal(state.mode,'hand');assert.equal(tracker.primaryLabel,'Left');
+  assert.equal(events.some(e=>e.type==='input:pinchend'),false);
+  assert.equal(events.some(e=>e.type==='input:zoom'),false);
+  tracker.update([hand()],66,['Left'],[],[],[hand()]);
+  assert.equal(events.filter(e=>e.type==='input:pinchend').length,1);
+});
+test('3D pinch hysteresis avoids flicker and rejects overlapping tips at different depths',()=>{
+  const tracker=new GestureTracker(()=>{}),image=hand();image[4]={...image[8]};
+  const world=hand();world[4]={...world[8]};
+  assert.equal(tracker.update([image],0,['Left'],[],[],[world]).mode,'hand');
+  world[4].x+=.08; // 0.4 palm lengths: keep an existing pinch
+  assert.equal(tracker.update([image],33,['Left'],[],[],[world]).mode,'hand');
+  world[4].z=.2; // projected tips overlap, but they are separated in depth
+  assert.notEqual(tracker.update([image],66,['Left'],[],[],[world]).mode,'hand');
+});
 test('palm facing the upward camera activates with only index extended in the palm plane',()=>{
   const p=hand();p.forEach(point=>{point.z=0;});
   assert.equal(isIndexOnlyExtended(p),true);

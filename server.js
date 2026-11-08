@@ -10,6 +10,9 @@ const files = {
   '/hand-pose.js': ['hand-pose.js', 'text/javascript'],
   '/tracking-quality.js': ['tracking-quality.js', 'text/javascript'],
   '/rigged-hand.js': ['rigged-hand.js', 'text/javascript'],
+  '/sandbox-state.js': ['sandbox-state.js', 'text/javascript'],
+  '/sandbox.js': ['sandbox.js', 'text/javascript'],
+  '/mouse-input.js': ['mouse-input.js', 'text/javascript'],
   '/assets/left-hand.glb': ['assets/left-hand.glb', 'model/gltf-binary'],
   '/assets/right-hand.glb': ['assets/right-hand.glb', 'model/gltf-binary'],
 };

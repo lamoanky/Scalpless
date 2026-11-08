@@ -25,14 +25,14 @@ export class GestureTracker {
 
   reset() {
     this.endActions();
-    if (this.point) this.emit('input:move', { ...this.point, mode: 'idle' });
+    if (this.point) this.emit('input:move', { ...this.point, mode: 'idle',lost:true });
     this.point = null;
     this.primaryLabel = null;
     this.zoomDistance = null;
     return { gesture: 'No hand detected', mode: 'idle', hands: 0, hold: 0 };
   }
 
-  update(hands, now, labels = [], held = [], heights = [], worldHands = [], aspect = 1) {
+  update(hands, now, labels = [], held = [], heights = [], worldHands = [], aspect = 1, worldCursors = [], gripCursors = []) {
     if (!hands.length) return this.reset();
     // Keep the same primary hand if MediaPipe changes result ordering.
     let index = this.primaryLabel ? labels.indexOf(this.primaryLabel) : 0;
@@ -40,6 +40,10 @@ export class GestureTracker {
       this.endActions();
       this.point = null;
       index = 0;
+    }
+    if(!this.pinching && !this.cutting){
+      const pinchingHand=hands.findIndex((points,i)=>{const m=pinchMetrics(points,worldHands[i],aspect);return m.ratio<m.start*this.sensitivity;});
+      if(pinchingHand>=0)index=pinchingHand;
     }
     this.primaryLabel = labels[index] || null;
     const hand = hands[index];
@@ -50,9 +54,14 @@ export class GestureTracker {
       y: (1 - alpha) * this.point.y + alpha * raw.y,
       z: raw.z, // Already stabilized with the rendered hand; don't filter twice.
     } : raw;
+    if(worldCursors[index])this.point.world={...worldCursors[index]};
 
-    // Two hands take priority so zoom cannot also grab or cut.
-    if (hands.length >= 2) {
+    const metrics=pinchMetrics(hand,worldHands[index],aspect);
+    const pinchRatio=metrics.ratio;
+    const pinch=this.pinching?pinchRatio<=metrics.end*this.sensitivity:pinchRatio<metrics.start*this.sensitivity;
+    // A pinch takes priority even with two hands visible. Zoom is available
+    // when neither hand is grabbing, rather than dropping the held cube.
+    if (hands.length >= 2 && !pinch) {
       this.endActions();
       const separation = distance(hands[0][8], hands[1][8]);
       let delta = 0;
@@ -65,14 +74,16 @@ export class GestureTracker {
       return { gesture: delta > 0 ? 'Zoom in' : delta < 0 ? 'Zoom out' : 'Zoom ready', mode: 'idle', hands: hands.length, hold: 0, delta, point:this.point };
     }
     this.zoomDistance = null;
-    const size = Math.max(distance(hand[0], hand[9]), 0.001);
-    const pinchRatio = distance(hand[4], hand[8]) / size;
     const blocked = held[index] || [];
-    const pinch = !blocked[0] && !blocked[1] && (this.pinching ? pinchRatio <= 0.35 * this.sensitivity : pinchRatio < 0.25 * this.sensitivity);
+    // Touching fingers naturally occlude each other. Judge pinch geometry in
+    // 3D instead of rejecting it because a finger is curled/foreshortened.
     const pointingPose = isIndexOnlyExtended(worldHands[index]||hand,this.cutting,worldHands[index]?1:aspect) && !blocked[1];
     let hold = 0;
     let gesture = 'Move / open hand';
     if (pinch) {
+      this.point.x=clamp(1-(hand[4].x+hand[8].x)/2);
+      this.point.y=clamp((hand[4].y+hand[8].y)/2);
+      if(gripCursors[index])this.point.world={...gripCursors[index]};
       if (this.cutting) { this.emit('input:cutend', { ...this.point }); this.cutting = false; }
       this.poseSince = null;
       if (!this.pinching) this.emit('input:pinchstart', { ...this.point });
@@ -96,6 +107,13 @@ export class GestureTracker {
     this.emit('input:move', { ...this.point, mode });
     return { gesture, mode, hands: hands.length, hold, pinchRatio, point: this.point };
   }
+}
+
+export function pinchMetrics(image,world,aspect=1){
+  const points=world||image;
+  const dist=(a,b)=>Math.hypot((a.x-b.x)*(world?1:aspect),a.y-b.y,world?(a.z||0)-(b.z||0):0);
+  const size=Math.max(dist(points[0],points[9]),dist(points[5],points[17]),.001);
+  return {ratio:dist(points[4],points[8])/size,start:world ? .36 : .28,end:world ? .52 : .42};
 }
 
 // Detect articulation, not a direction in the camera image. World landmarks
