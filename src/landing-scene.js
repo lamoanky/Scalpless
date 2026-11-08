@@ -114,7 +114,7 @@ export async function createLandingScene(bench,specimen) {
     shadow.material.opacity=1-THREE.MathUtils.smoothstep(frame.pose,0,.15);
     specimen.setPresentationPose?.(frame.pose);
     const mobile=bench.host.clientWidth<700;
-    const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),(mobile?2.7:2.1)+frame.previewRotation);
+    const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),(mobile?2.7:2.1)+frame.previewRotation+(frame.idleRotation??0));
     rotation.slerpQuaternions(yaw.clone().multiply(flip),identity,frame.pose);
     startAnchor.set(0,0,.006).applyQuaternion(yaw).add(specimen.origin);startAnchor.y=seatedAnchorY;
     anchor.lerpVectors(startAnchor,center,frame.pose);anchor.y+=Math.sin(frame.pose*Math.PI)*.035;
@@ -153,6 +153,7 @@ export async function createLandingScene(bench,specimen) {
     meshIds,appearance:specimen.appearance,pose:lastFrame?.pose??0,
     entryProgress:lastFrame?.entryProgress??0,handoff:lastFrame?.handoff??0,
     previewRotation:lastFrame?.previewRotation??0,
+    idleRotation:lastFrame?.idleRotation??0,
     heroModel:'models/frog/scalpless-frog.glb',heroVisible:heroRoot.visible,
     heroRotation:heroVisual.rotation.toArray(),panelsFixed:true,
     backdrop:'art/landing-frog-background.webp',backdropOpacity:lastFrame?.backdropOpacity??1,

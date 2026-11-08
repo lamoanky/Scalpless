@@ -7,14 +7,19 @@ import "./liquid-glass.css";
 // and the controller remain authoritative. Never capture DOM or camera video.
 export function installLiquidGlass(bench) {
   const selector = ".tool-group, .context-controls, .camera-pad, .piece-picker, .manipulation-pad, .specimen-switcher, .anatomy-toggle, .organ-slide, .study-launch, .teaching-launch, .teaching-panel, .hand-tracking-launch, .hand-tracking-panel";
-  const panels = [...document.querySelectorAll(selector)].map(element => {
+  const panels = [];
+  function addPanel(element) {
+    if (!element || panels.some(panel => panel.element === element)) return;
     element.classList.add("liquid-glass");
-    const frame = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const frame = element.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "svg");
     frame.classList.add("glass-frame"); frame.setAttribute("aria-hidden","true");
     frame.innerHTML = '<rect fill="none" vector-effect="non-scaling-stroke"/>';
     element.append(frame);
-    return {element,frame,surface:new THREE.WebGLRenderTarget(1,1,{depthBuffer:false})};
-  });
+    panels.push({element,frame,external:element.ownerDocument!==document,
+      surface:new THREE.WebGLRenderTarget(1,1,{depthBuffer:false})});
+  }
+  document.querySelectorAll(selector).forEach(addPanel);
+  const styleOf=element=>element.ownerDocument.defaultView.getComputedStyle(element);
   const material = new THREE.ShaderMaterial({
     uniforms: {u_image:{value:null},u_resolution:{value:new THREE.Vector2()},
       u_textureSize:{value:new THREE.Vector2()},u_containerPosition:{value:new THREE.Vector2()},
@@ -46,13 +51,15 @@ export function installLiquidGlass(bench) {
     transparent:true,premultipliedAlpha:true,depthTest:false,depthWrite:false,toneMapped:false,
   }));
   const viewport = new THREE.Vector4(), scissor = new THREE.Vector4(), size = new THREE.Vector2();
-  let texture = null, active = 0;
+  let texture = null, active = 0, externalActive = 0;
   return {
-    getDebug: () => ({active, renderer:"shared", source:"lab-framebuffer", shader:"liquid-glass-js-original"}),
+    addPanel,
+    getDebug: () => ({active, externalActive, renderer:"shared", source:"lab-framebuffer", shader:"liquid-glass-js-original"}),
     render() {
       const visible = panels.filter(({element}) => !element.hidden &&
-        element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
+        element.getClientRects().length && styleOf(element).visibility !== "hidden");
       active = visible.length;
+      externalActive = visible.filter(panel=>panel.external).length;
       if (!active) return;
       const renderer = bench.renderer, host = bench.host.getBoundingClientRect();
       renderer.getDrawingBufferSize(size);
@@ -73,10 +80,14 @@ export function installLiquidGlass(bench) {
       try {
         renderer.setScissorTest(false); renderer.setRenderTarget(topDown);
         flip.render(renderer); renderer.setRenderTarget(null); renderer.setScissorTest(true);
-        for (const {element,frame,surface} of visible) {
+        for (const {element,frame,surface,external} of visible) {
           const rect = element.getBoundingClientRect(), w = rect.width, h = rect.height;
           if (w < 1 || h < 1) continue;
-          const radius = Math.min(parseFloat(getComputedStyle(element).borderRadius) || 24,w/2,h/2);
+          // The native landing CTA lives above this same-origin iframe. Draw
+          // its glass in the shared scene, with its HTML label staying on top.
+          const offset=external?window.frameElement.getBoundingClientRect():{left:0,top:0};
+          const left=rect.left-offset.left,top=rect.top-offset.top,bottom=rect.bottom-offset.top;
+          const radius = Math.min(parseFloat(styleOf(element).borderRadius) || 24,w/2,h/2);
           if (!element.contains(frame)) element.append(frame);
           if (frame.dataset.size !== `${w},${h},${radius}`) {
             frame.dataset.size = `${w},${h},${radius}`;
@@ -85,16 +96,17 @@ export function installLiquidGlass(bench) {
               frame.querySelector("rect").setAttribute(name,value);
           }
           material.uniforms.u_resolution.value.set(w,h);
-          material.uniforms.u_containerPosition.value.set(rect.left-host.left+w/2,rect.top-host.top+h/2);
+          material.uniforms.u_containerPosition.value.set(left-host.left+w/2,top-host.top+h/2);
           material.uniforms.u_borderRadius.value = radius;
           surface.setSize(Math.ceil(w),Math.ceil(h));
           renderer.setRenderTarget(surface); renderer.setClearColor(0,0); renderer.clear();
           quad.render(renderer);
           renderer.setRenderTarget(null); renderer.setScissorTest(true);
-          renderer.setViewport(rect.left-host.left,host.bottom-rect.bottom,w,h);
-          renderer.setScissor(rect.left-host.left,host.bottom-rect.bottom,w,h);
+          renderer.setViewport(left-host.left,host.bottom-bottom,w,h);
+          renderer.setScissor(left-host.left,host.bottom-bottom,w,h);
           present.material.uniforms.image.value = surface.texture;
           present.render(renderer);
+          element.classList.add("glass-ready");
         }
       } finally {
         renderer.setViewport(viewport); renderer.setScissor(scissor);

@@ -30,6 +30,16 @@ try {
   assert.equal(initial.heroRotation[2],Math.PI);assert(initial.panelsFixed);
   assert.equal(initial.backdrop,'art/landing-frog-background.webp');
   assert.equal(initial.handoff,0);assert.equal(initial.platformVisible,false);
+  await lab().waitForFunction(rotation=>Math.abs(window.__scalpless.getDebug().presentation.idleRotation-rotation)>.005,initial.idleRotation);
+  const swaying=await lab().evaluate(()=>window.__scalpless.getDebug().presentation);
+  assert(Math.abs(swaying.idleRotation)<=.1,'Idle rotation stays subtle');
+  assert.notDeepEqual(swaying.rootMatrix,initial.rootMatrix,'The model rotates without scrolling');
+  assert.equal(swaying.previewRotation,0);assert.equal(swaying.handoff,0);
+  assert.deepEqual(swaying.camera,initial.camera,'Idle movement keeps the camera and artwork fixed');
+  await page.locator('.start-dissection.glass-ready').waitFor();
+  assert.equal(await lab().evaluate(()=>window.__scalpless.getDebug().glass.externalActive),1);
+  assert.equal(await page.locator('.start-dissection').evaluate(e=>getComputedStyle(e).fontFamily),
+    await page.locator('.landing-wordmark').evaluate(e=>getComputedStyle(e).fontFamily));
   assert.equal(await lab().locator('#scene canvas').count(),1,'One renderer from opening through interaction');
   await page.screenshot({path:'output/landing-hero.png'});
   await scroll(.56);const middle=await debug();
@@ -54,6 +64,8 @@ try {
   const landed=await lab().evaluate(()=>window.__scalpless.getDebug().presentation);
   assert.deepEqual(landed.meshIds,initial.meshIds,'The live dissection meshes survive the preview handoff');
   assert.equal(landed.heroVisible,false);assert.equal(landed.handoff,1);
+  assert.equal(landed.idleRotation,0,'Idle motion stops before the interactive specimen takes over');
+  assert.equal(await lab().evaluate(()=>window.__scalpless.getDebug().glass.externalActive),0);
   assert.deepEqual(landed.rootMatrix,[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
   assert.equal(landed.platformY,0);
   assert.equal(landed.labReflection,true,'Entry restores the shared reflective laboratory');
@@ -85,6 +97,8 @@ try {
   await page.goto(base);await ready();await page.setViewportSize({width:390,height:844});
   await page.waitForTimeout(300);await page.screenshot({path:'output/landing-mobile.png'});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  const mobileButton=await page.locator('.start-dissection').boundingBox();
+  assert(mobileButton.x>=0&&mobileButton.x+mobileButton.width<=390);
   await scroll(.56);await page.screenshot({path:'output/landing-mobile-transition.png'});
   const mobileWordmark=await page.locator('.landing-wordmark').boundingBox();
   assert(mobileWordmark.x>=0&&mobileWordmark.x+mobileWordmark.width<=390);
@@ -94,6 +108,10 @@ try {
   await lab().locator('[data-tool="hand"]').click();
   assert.equal(await lab().evaluate(()=>window.__scalpless.getDebug().state.tool),'hand');
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto(base);await ready();
+  const still=await lab().evaluate(()=>window.__scalpless.getDebug().presentation);
+  await page.waitForTimeout(350);
+  const stillLater=await lab().evaluate(()=>window.__scalpless.getDebug().presentation);
+  assert.equal(still.idleRotation,0);assert.deepEqual(stillLater.rootMatrix,still.rootMatrix,'Reduced motion disables idle rotation');
   await scroll(.5);const reduced=await debug();assert.equal(reduced.pose,0);assert.equal(reduced.camera,0);
   await scroll(1);assert.equal((await debug()).entered,false);
   await page.getByRole('button',{name:'Start dissection',exact:true}).click();
@@ -106,7 +124,7 @@ try {
   assert(await fallback.locator('.enter-lab').isVisible());
   assert.equal(await fallback.locator('.enter-lab').getAttribute('href'),'./lab.html?specimen=frog&appearance=blue');
   await fallback.close();
-  const report={errors,buttonGatedEntry:true,originalGLBBeforeEntry:true,fixedPanelArtwork:true,sameMeshHandoff:true,midpoint:middle,reducedMotion:reduced,interactive:'cut, lift, place, undo and reset passed',mobile:true,backAndReload:true};
+  const report={errors,idleRotation:true,liquidGlassCTA:true,buttonGatedEntry:true,originalGLBBeforeEntry:true,fixedPanelArtwork:true,sameMeshHandoff:true,midpoint:middle,reducedMotion:reduced,interactive:'cut, lift, place, undo and reset passed',mobile:true,backAndReload:true};
   await writeFile('output/landing-validation.json',JSON.stringify(report,null,2));
   console.log('Frog landing checks passed',JSON.stringify(report));
 }finally{await browser.close();}
