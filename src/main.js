@@ -7,7 +7,6 @@ import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
 import { installMicroscope, microscopeIcon } from "./microscope.js";
-import { installLesson } from "./lesson.js";
 import { createLandingPresentation } from "./landing-presentation.js";
 import { installOrganSlide } from "./organ-slide.js";
 import { installTeachingChat } from "./teaching-chat.js";
@@ -47,7 +46,6 @@ const paths = {
   alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
   // Two r=8 arcs around (12,12); each ends exactly on its arrowhead corner.
   reset: "M4 12a8 8 0 0 1 14.93-4M18.93 3v5h-5M20 12a8 8 0 0 1-14.93 4M5.07 21v-5h5",
-  lesson: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 14a2 2 0 0 1 2-2h13M8 7h7M8 11h5",
   frog: "M8 5a3 3 0 1 0-4 4m12-4a3 3 0 1 1 4 4M7 7c-3 3-1 10 5 10s8-7 5-10M6 12l-4 3 4 2-2 4 6-4m8-5 4 3-4 2 2 4-6-4M9 9h.01M15 9h.01",
   onion:
     "M10 3c1 4-6 5-6 11a8 8 0 0 0 16 0c0-6-7-7-6-11M12 5c-6 6-6 14 0 17m0-17c6 6 6 14 0 17",
@@ -66,7 +64,6 @@ $("tools").innerHTML = `<div class="tool-group">${[
   .join(
     "",
   )}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
-  ["lesson-toggle", "lesson", "Guided lesson"],
   ["camera-angles", "camera", "Camera controls"],
   ["hints", "hints", "Show incision and grasp hints"],
   ["undo", "undo", "Undo last operation (⌘/Ctrl Z)"],
@@ -74,7 +71,7 @@ $("tools").innerHTML = `<div class="tool-group">${[
 ]
   .map(
     ([id, i, label]) =>
-      `<button class="icon-button" id="${id}" aria-label="${label}" ${id === "hints" || id === "lesson-toggle" ? 'aria-pressed="false"' : ""}>${icon(i)}</button>`,
+      `<button class="icon-button" id="${id}" aria-label="${label}" ${id === "hints" ? 'aria-pressed="false"' : ""}>${icon(i)}</button>`,
   )
   .join("")}</div>`;
 const cameraPad = document.createElement("div");
@@ -177,7 +174,7 @@ try {
     $("bench").append(anatomyButton);
   }
   const input = installInput(lab, bench);
-  // Mirror the active input on the bench so the lesson can switch its wording.
+  // Mirror the active input on the scene for input-mode feedback.
   const setInputSource = input.setSource.bind(input);
   input.setSource = (next) => {
     setInputSource(next);
@@ -426,17 +423,6 @@ try {
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
-  // Each specimen has its own guided lesson (see src/lesson.js).
-  installLesson({
-      lab,
-      toggle: $("lesson-toggle"),
-      announce: (text) => {
-        $("status").textContent = text;
-      },
-      restart: () => $("reset").click(),
-      inputMode: () => bench.host.dataset.input ?? "mouse",
-      inputHost: bench.host,
-    });
   // Build final-pose colliders while loading, avoiding a hull-generation hitch
   // at the instant scroll releases the specimen to interactive physics.
   physics.syncSpecimen(specimen, lab.states);

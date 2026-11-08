@@ -110,7 +110,6 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
       if(current!==version)return;
       history.push({role:"user",text:question},{role:"model",text:answer});history=history.slice(-HISTORY_LIMIT);
       message("model",answer);$("teaching-question").value="";setStatus("Answer ready.");
-      // Lets the guided lesson tick off its "ask the tutor" step.
       dispatchEvent(new CustomEvent("teaching:answer"));
       const scroll=panel.querySelector(".teaching-scroll");scroll.scrollTop=scroll.scrollHeight;
     } catch(error) {
