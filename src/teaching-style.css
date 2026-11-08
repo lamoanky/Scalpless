@@ -1,0 +1,153 @@
+/* Reference chat: luminous blue glass over the existing live refraction.
+   This layer changes presentation only; native form controls keep ownership. */
+#bench .teaching-panel {
+  --chat-ink:#315f97;
+  width:400px;
+  max-width:calc(100vw - 48px);
+  border:1px solid #d7f6ff;
+  border-radius:34px;
+  color:var(--chat-ink);
+  background:linear-gradient(120deg,#c8ddfb60,#d7eaff4d 42%,#afd4ff50);
+  box-shadow:inset 1px 1px 2px #ffffff, inset -2px -2px 3px #e8ffffef,
+    inset 3px 0 3px #5f9ceba6, inset 0 3px 4px #5396df66,
+    0 0 0 1px #ffffffa8, 0 8px 32px #3985d214;
+}
+#bench .teaching-panel::before {
+  background:radial-gradient(ellipse at 0 0,#ffffffa8,transparent 32%),
+    radial-gradient(ellipse at 100% 100%,#d9faff80,transparent 40%),
+    linear-gradient(115deg,#d8eaff30,#b2cefa22);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+}
+#bench .teaching-panel::after {
+  content:""; position:absolute; inset:3px; border-radius:30px;
+  border:1px solid #ffffff9c; border-left-color:#76b4f766;
+  box-shadow:inset 0 -1px 2px #fff9,0 1px 3px #f4ffffc9;
+  pointer-events:none; z-index:4;
+}
+#bench .teaching-panel > .glass-frame { stroke:#f3ffffd9; stroke-width:1.25; }
+#bench .teaching-panel .teaching-heading { padding:10px 12px 8px 24px; gap:10px; min-height:64px; background:transparent; }
+#bench .teaching-panel .teaching-heading::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,#eefaff70,#eefaff10); }
+#bench .teaching-panel .panel-eyebrow { font-size:10.5px; font-weight:650; letter-spacing:.22em; color:#3c6c9e; white-space:nowrap; text-shadow:0 1px 1px #f0fcffb0; }
+#bench .teaching-panel #teaching-close { order:1; width:48px; height:48px; color:#397dc0; }
+#bench .teaching-panel #teaching-close svg { width:27px; height:27px; stroke-width:1.8; filter:drop-shadow(-1px -1px 0 #f4ffff); }
+#bench .teaching-panel .teaching-scroll { padding:0 24px; scrollbar-color:#7badcf66 transparent; }
+#bench .teaching-panel .teaching-suggestions { display:block; margin:0; width:100%; }
+#bench .teaching-panel.has-study .teaching-suggestions { display:none; }
+#bench .teaching-panel .teaching-suggestions summary {
+  list-style:none; min-height:50px; display:flex; align-items:center; gap:12px;
+  padding:10px 14px; border:1px solid #e6ffff; border-radius:19px;
+  background:linear-gradient(125deg,#c1dbfb40,#c5e6ff66);
+  box-shadow:inset 1px 1px 2px #fff, inset -1px -1px 3px #e9ffff,
+    inset 3px 0 2px #6aa8ea70,0 0 3px #f4ffffa0;
+  font-size:10.5px; line-height:1.45; font-weight:650; letter-spacing:.045em;
+  color:#2d6097; cursor:pointer;
+}
+#bench .teaching-panel .teaching-suggestions summary::-webkit-details-marker { display:none; }
+#bench .teaching-panel .teaching-suggestions summary > svg {
+  margin-left:auto; flex:0 0 20px; width:20px; height:20px;
+  fill:none; stroke:#3576b6; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+  transition:transform .18s ease;
+}
+#bench .teaching-panel .teaching-suggestions[open] summary > svg { transform:rotate(180deg); }
+#bench .teaching-panel .question-orb {
+  flex:0 0 10px; height:10px; border:1px solid #e9ffff; border-radius:50%;
+  background:radial-gradient(circle at 28% 25%,#eaffff,#62dcff 35%,#238fd8 65%,#97ebff);
+  box-shadow:0 0 5px #f3ffff,inset -1px -1px 1px #dcffff;
+}
+#bench .teaching-panel .teaching-ideas { display:grid; gap:5px; padding:8px 0 0; }
+#bench .teaching-panel .question-idea { width:100%; background:#d9ecff80; border-color:#dff6ff; border-radius:14px; color:var(--chat-ink); }
+#bench .teaching-panel .teaching-composer { padding:16px 22px 10px; border:0; background:none; }
+#bench .teaching-panel .context-sharing {
+  position:relative; gap:13px; min-height:48px; margin:0 4px 9px;
+  font-size:10px; font-weight:650; letter-spacing:.07em; line-height:1.6;
+}
+#bench .teaching-panel .context-sharing input {
+  position:absolute; width:28px; height:28px; left:0; margin:0; opacity:0;
+}
+#bench .teaching-panel .sharing-check {
+  pointer-events:none;
+  display:grid; place-items:center; flex:0 0 27px; height:27px; border-radius:7px;
+  border:1px solid #c4efff;
+  background:linear-gradient(135deg,#e3f3ff7a,#a5c9ef54);
+  box-shadow:inset 1px 1px 2px #f5ffff, inset -1px -1px 3px #73aae3;
+}
+#bench .teaching-panel .sharing-check svg { width:22px; height:22px; fill:none; stroke:#edffff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+#bench .teaching-panel .context-sharing input:checked + .sharing-check {
+  border-color:#81dbff;
+  background:radial-gradient(ellipse at 28% 18%,#9ce6ff 0,#60b9ff 18%,#2378dc 58%,#1b5dbf 82%,#7bceff);
+  box-shadow:inset 1px 1px 2px #f5ffff, inset -1px -1px 3px #b0f3ff,0 0 0 1px #478bd990;
+}
+#bench .teaching-panel .context-sharing input:checked + .sharing-check svg { opacity:1; filter:drop-shadow(0 1px 2px #57c6ff); }
+#bench .teaching-panel .context-sharing input:focus-visible + .sharing-check { outline:2px solid #235f99; outline-offset:3px; }
+#bench .teaching-panel #teaching-context { margin-top:3px; font-size:9px; line-height:1.5; font-weight:600; letter-spacing:.09em; color:#648bb5; }
+#bench .teaching-panel .question-entry {
+  min-height:70px; gap:7px; padding:6px; border:1px solid #ecffff; border-radius:24px;
+  background:linear-gradient(115deg,#acd1ff36,#d5efff60);
+  box-shadow:inset 1px 1px 2px #fff, inset 2px 0 3px #5095e3c0,
+    inset 0 -2px 2px #d5f8ff,0 1px 2px #6ca5e166;
+}
+#bench .teaching-panel .question-entry textarea {
+  min-height:56px; height:56px; max-height:100px; padding:16px 12px;
+  resize:none; border:1px solid #e5f8ffcc; border-radius:17px;
+  background:linear-gradient(130deg,#c5dafa60,#e2f0ff40);
+  box-shadow:inset 1px 1px 2px #669ce477,0 1px 1px #fff9;
+  font-size:10.5px; font-weight:650; line-height:1.7; letter-spacing:.035em;
+}
+#bench .teaching-panel .question-entry textarea::placeholder { color:#6b88af; opacity:1; }
+#bench .teaching-panel .question-entry textarea:focus-visible {
+  outline:1px solid #79aee6; outline-offset:0;
+  box-shadow:inset 1px 1px 2px #669ce477,0 0 0 2px #ecffff99;
+}
+#bench .teaching-panel .question-entry .icon-button {
+  width:54px; height:54px; flex:0 0 54px; border-radius:50%; border:1px solid #dcffff;
+  color:#e7ffff;
+  background:radial-gradient(ellipse at 32% 12%,#8edbff 0,#4e9fec 24%,#2167bd 65%,#3a88dc 84%,#a1eaff);
+  box-shadow:inset 1px 1px 2px #e9ffff, inset -1px -2px 4px #95dfff,0 0 0 1px #82bcebaa;
+}
+#bench .teaching-panel .question-entry .icon-button:hover { filter:brightness(1.1); }
+#bench .teaching-panel .question-entry .icon-button svg { width:27px; height:27px; stroke-width:1.7; filter:drop-shadow(0 1px 1px #7cd9ff); }
+#bench .teaching-panel .teaching-foot { min-height:46px; padding:3px 2px 0; }
+#bench .teaching-panel .teaching-foot button { font-size:10.5px; font-weight:650; letter-spacing:.2em; color:#4a77a4; }
+#bench .teaching-panel .teaching-status { padding:0 4px; color:#416d98; }
+#bench .teaching-panel .teaching-message {
+  border-radius:20px; border:1px solid #e4faffb8;
+  background:linear-gradient(125deg,#e6f2ff80,#cfe4ff58); color:#305c89;
+  box-shadow:inset 0 1px 1px #ffffffb0; margin:10px 0; padding:14px;
+}
+#bench .teaching-panel .teaching-message.user { margin-left:20px; background:#b6d7f966; }
+#bench .teaching-panel .message-label { color:#4c80ae; }
+#bench.has-teaching-chat .organ-slide, #bench.has-teaching-chat .study-launch { right:440px; }
+@media(max-width:760px) {
+  #bench .teaching-panel { width:calc(100vw - 24px); max-width:none; border-radius:28px; }
+  #bench .teaching-panel::after { border-radius:24px; }
+  #bench .teaching-panel .teaching-heading { min-height:50px; padding:2px 8px 0 18px; }
+  #bench .teaching-panel .panel-eyebrow { font-size:9px; letter-spacing:.16em; }
+  #bench .teaching-panel .teaching-scroll { padding:0 15px; }
+  #bench .teaching-panel .teaching-suggestions summary { font-size:9px; padding:9px 10px; gap:8px; }
+  #bench .teaching-panel .teaching-composer { padding:8px 12px 4px; }
+  #bench .teaching-panel .context-sharing { font-size:9px; gap:10px; margin-bottom:5px; }
+  #bench .teaching-panel #teaching-context { font-size:8px; letter-spacing:.04em; }
+  #bench .teaching-panel .question-entry { min-height:64px; padding:5px; gap:5px; border-radius:22px; }
+  #bench .teaching-panel .question-entry textarea { padding:10px; font-size:9px; min-height:52px; height:52px; }
+  #bench .teaching-panel .question-entry .icon-button { width:48px; height:48px; flex-basis:48px; }
+  #bench .teaching-panel .teaching-foot { min-height:48px; padding:0; }
+  #bench .teaching-panel .teaching-foot button { font-size:9px; }
+  #bench.has-teaching-chat .organ-slide, #bench.has-teaching-chat .study-launch { right:12px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  #bench .teaching-panel .teaching-suggestions summary > svg { transition:none; }
+}
+@media(max-height:600px) {
+  #bench .teaching-panel { display:flex; overflow:hidden; }
+  #bench .teaching-panel .teaching-heading {
+    position:static; min-height:48px; padding:0 10px 0 18px;
+  }
+  #bench .teaching-panel .teaching-scroll { min-height:32px; overflow:auto; flex:1 1 auto; }
+  #bench .teaching-panel .teaching-composer { padding:6px 14px 4px; flex:0 1 auto; min-height:132px; overflow:auto; }
+  #bench .teaching-panel .context-sharing { min-height:40px; margin:0 2px 4px; font-size:9px; }
+  #bench .teaching-panel #teaching-context { font-size:8px; }
+  #bench .teaching-panel .question-entry { min-height:58px; padding:4px; }
+  #bench .teaching-panel .question-entry textarea { height:48px; min-height:48px; padding:10px; }
+  #bench .teaching-panel .question-entry .icon-button { width:48px; height:48px; flex-basis:48px; }
+  #bench .teaching-panel .teaching-foot { padding-top:0; }
+}

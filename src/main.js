@@ -10,6 +10,7 @@ import { createLandingPresentation } from "./landing-presentation.js";
 import { installOrganSlide } from "./organ-slide.js";
 import { installTeachingChat } from "./teaching-chat.js";
 import { installLiquidGlass } from "./liquid-glass.js";
+import "./teaching-style.css";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =

@@ -19,11 +19,11 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     <header class="teaching-heading"><span class="panel-eyebrow">SCALPLESS / LEARN</span>
       <button id="teaching-close" class="icon-button" type="button" aria-label="Close teaching chat">${icon("m6 6 12 12M6 18 18 6")}</button></header>
     <div class="teaching-scroll">
-      <div class="teaching-suggestions" role="group" aria-label="Question ideas"><button type="button" class="question-idea" data-question="What can I explore next in this lab?">What can I explore next?</button><button type="button" class="question-idea" data-question="What does the organ I am holding do?" id="organ-question" hidden>What does this organ do?</button></div>
+      <details class="teaching-suggestions"><summary aria-label="Choose a question"><span class="question-orb" aria-hidden="true"></span><span>What can I explore next?</span>${icon("m6 9 6 6 6-6")}</summary><div class="teaching-ideas" role="group" aria-label="Question ideas"><button type="button" class="question-idea" data-question="What can I explore next in this lab?">What can I explore next?</button><button type="button" class="question-idea" data-question="What does the organ I am holding do?" id="organ-question" hidden>What does this organ do?</button><button type="button" class="question-idea" data-question="How do I use the scalpel and forceps in this virtual lab?">How do I use the tools?</button></div></details>
       <div id="teaching-messages" class="teaching-messages" role="log" aria-label="Biology conversation" aria-live="off" tabindex="0"></div>
     </div>
     <form id="teaching-ask" class="teaching-composer">
-      <label class="context-sharing"><input id="teaching-share" type="checkbox" checked/><span>Share current lab state<span id="teaching-context"></span></span></label>
+      <label class="context-sharing"><input id="teaching-share" type="checkbox" checked/><span class="sharing-check" aria-hidden="true">${icon("m6 12 4 4 8-9")}</span><span>Share current lab state<span id="teaching-context"></span></span></label>
       <label class="sr-only" for="teaching-question">Your biology question</label>
       <div class="question-entry"><textarea id="teaching-question" rows="2" maxlength="${QUESTION_LIMIT}" placeholder="Ask a biology question…"></textarea><button class="icon-button" id="teaching-send" type="submit" aria-label="Send question">${icon("M12 20V4m-6 6 6-6 6 6")}</button><button class="icon-button" id="teaching-stop" type="button" aria-label="Stop answer" hidden>${icon("M6 6h12v12H6z")}</button></div>
       <p id="teaching-status" class="teaching-status" role="status" aria-live="polite"></p>
@@ -77,7 +77,8 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
   $("teaching-stop").onclick=()=>{stop();$("teaching-question").focus();};
   $("teaching-share").onchange=()=>updateContext(state);
   panel.querySelectorAll("[data-question]").forEach(button=>button.onclick=()=>{
-    if(pending)return;$("teaching-question").value=button.dataset.question;$("teaching-question").focus();
+    if(pending)return;$("teaching-question").value=button.dataset.question;
+    panel.querySelector(".teaching-suggestions").open=false;$("teaching-question").focus();
   });
   function message(role,text,labelText) {
     const article=document.createElement("article");article.className=`teaching-message ${role}`;

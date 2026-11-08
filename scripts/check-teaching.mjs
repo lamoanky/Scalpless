@@ -30,7 +30,11 @@ try {
   await page.goto(`${base}lab.html?specimen=frog`);await page.waitForFunction(()=>document.documentElement.dataset.ready==="true");
   assert.equal(calls.length,0);await chat();
   assert.equal(await page.locator("#teaching-settings, #teaching-key, #teaching-mode, #teaching-model").count(),0);
+  await page.locator("#teaching-panel").screenshot({path:"output/teaching-reference-panel.png"});
+  await page.locator(".teaching-suggestions summary").click();
   await page.locator(".question-idea").first().click();assert.equal(calls.length,0,"Opening chat and choosing a suggestion never send a request");
+  assert.equal(await page.locator(".teaching-suggestions").evaluate(e=>e.open),false);
+  assert.match(await question.inputValue(),/What can I explore next/);
   for(const text of ["A closer look.","Ask about your specimen, an organ’s function, or your next step in the virtual lab.","Ready when you are. Ask about your specimen.","AI can make mistakes. Check with your teacher."])
     assert(!await page.locator("#teaching-panel").textContent().then(value=>value.includes(text)));
   const intact=await state();
