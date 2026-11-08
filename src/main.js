@@ -6,6 +6,7 @@ import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
 import { installHandTracking } from "./hand-tracking.js";
 import { createLandingPresentation } from "./landing-presentation.js";
+import { installOrganSlide } from "./organ-slide.js";
 
 const $ = (id) => document.getElementById(id);
 const specimenId =
@@ -100,6 +101,7 @@ $("camera-angles").setAttribute("aria-expanded", "false");
 $("camera-angles").setAttribute("aria-controls", "camera-pad");
 $("piece-menu").innerHTML = icon("layers");
 $("place-action").innerHTML = icon("place");
+$("move-controls").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3m12-6 3 3-3 3"/></svg>';
 $("manipulation-pad").innerHTML = [
   ["0,0,-1", "up", "Move away (↑)"],
   ["0,1,0", "lift", "Lift (Page Up)"],
@@ -166,6 +168,7 @@ try {
   }
   const input = installInput(lab, bench);
   const handTracking = installHandTracking(bench, input);
+  const organSlide = installOrganSlide(lab, bench);
   document.querySelectorAll("button[data-tool]").forEach((button) =>
     button.addEventListener("click", () => {
       closeMenus();
@@ -223,6 +226,12 @@ try {
   $("piece-select").onchange = (e) => lab.select(e.target.value);
   $("primary-action").onclick = () => lab.primaryAction();
   $("place-action").onclick = () => lab.placeInTray();
+  let movementOpen = false, lastHeld = null;
+  $("move-controls").onclick = () => {
+    movementOpen = !movementOpen;
+    $("manipulation-pad").hidden = !movementOpen;
+    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
+  };
   $("manipulation-pad").onclick = (e) => {
     const action = e.target.closest("button")?.dataset.move;
     if (!action) return;
@@ -333,7 +342,13 @@ try {
     }
     $("primary-action").disabled = lab.autoCut;
     $("place-action").hidden = !detached;
-    $("manipulation-pad").hidden = !state.held;
+    if (state.held !== lastHeld) {
+      movementOpen = Boolean(state.held) && innerWidth > 1100;
+      lastHeld = state.held;
+    }
+    $("move-controls").hidden = !state.held;
+    $("move-controls").setAttribute("aria-expanded", String(movementOpen));
+    $("manipulation-pad").hidden = !state.held || !movementOpen;
     $("tool-hint").textContent =
       state.tool === "inspect"
         ? "Drag to look around. Scroll to move closer."
@@ -383,6 +398,7 @@ try {
     }
     presentation.update();
     bench.render(dt);
+    organSlide.render();
     frames.push(elapsed);
     if (lab.held || lab.cutting) {
       manipulationFrames.push(elapsed);
@@ -420,6 +436,7 @@ try {
       ),
       handTracking: handTracking.getDebug(),
       anatomyView: specimen.anatomyView ?? false,
+      organStudy: organSlide.getDebug(),
     }),
   };
 } catch (error) {

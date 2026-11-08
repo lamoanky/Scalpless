@@ -84,6 +84,16 @@ The specimen stays stationary during cutting. Attached tissue is deformed around
 
 The original supplied design is preserved in `design/reference.png`. Runtime geometry is generated in code. The skin uses authored 4096 × 2048 color, normal and roughness maps; the cut faces use 2048 × 2048 color and normal maps. These synthesize fine fibers and wrinkles in the reference palette rather than claiming to recover photographic detail from the small reference. The specimen and tools remain live 3D objects, and floating educational panels are omitted.
 
+## Organ study slides
+
+Picking up a detached frog heart, liver, lung, stomach or intestine opens a small glass study slide. It shows the actual organ geometry, its name, function and an observation prompt. Drag the study view or focus it and use the arrow keys to rotate the study; Home restores its angle. This is a gross-anatomy 3D view, not microscopic tissue imagery.
+
+The live organ stays in your forceps. The slide is a read-only clone rendered through the existing WebGL renderer; it is never added to Rapier or the picking hierarchy. Place, release, cancel, undo and reset dismiss it immediately. Minimize it with its close button and reopen it with the slide icon while the organ is held. Opening the study never steals focus during a drag.
+
+The four-arrow button beside the tissue actions expands native movement controls. These start collapsed on smaller screens; the existing movement and rotation keyboard shortcuts remain available. Every button retains a 48 px target and visible keyboard focus.
+
+The descriptions are concise classroom summaries, checked against the [NWTC frog laboratory manual](https://bio.libretexts.org/Courses/Northeast_Wisconsin_Technical_College/General_Biology_Laboratory_Manual/Laboratory_14%3A_Vertebrates/14.02%3A_Amphibian_%28Frog%29_Dissection). The model remains a simplified educational illustration.
+
 ## Integration contract
 
 Dispatch `CustomEvent`s on `window`. Coordinates are normalized **0…1 within the scene**, with the origin at its top-left.
@@ -109,6 +119,7 @@ Start the local server, then:
 npm test                  # cut coverage, undo and deterministic landing motion
 npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
+npm run test:study        # independent organ view, undo/reset and narrow layouts
 npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
 FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks
 npm run test:tracking     # camera lifecycle and gesture-driven onion workflow

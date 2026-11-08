@@ -18,6 +18,7 @@
     "test:sandbox": "playwright test",
     "test:tracking": "node scripts/check-hand-tracking.mjs",
     "test:frog": "node scripts/check-frog.mjs",
+    "test:study": "node scripts/check-organ-study.mjs",
     "capture:frog": "node scripts/check-frog.mjs --record"
   },
   "dependencies": {

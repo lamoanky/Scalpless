@@ -1,0 +1,55 @@
+.organ-slide {
+  position: absolute;
+  top: 96px;
+  right: 24px;
+  width: 284px;
+  z-index: 8;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  box-shadow: var(--glass-shadow), 0 16px 36px #31588115;
+  color: #24476c;
+  overflow: hidden;
+  animation: study-arrive .24s ease-out both;
+}
+@keyframes study-arrive { from {opacity:0; transform:translateY(10px)} to {opacity:1; transform:translateY(0)} }
+.slide-heading { display:flex; align-items:center; justify-content:space-between; padding:8px 8px 8px 18px; }
+.slide-heading, .slide-copy { background:var(--glass-surface); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+.panel-eyebrow { display:block; font-size:9px; font-weight:650; letter-spacing:.13em; color:#436b8c; }
+.slide-heading h2 { font-size:21px; letter-spacing:-.035em; font-weight:550; margin:5px 0 0; }
+.slide-preview { position:relative; height:166px; cursor:grab; touch-action:none; outline-offset:-3px; }
+.slide-preview:active { cursor:grabbing; }
+.slide-preview:focus-visible { outline:2px solid #087da9; }
+.slide-etch { position:absolute; inset:14px; border:1px solid #ffffff80; border-radius:3px; pointer-events:none; }
+.slide-etch::before, .slide-etch::after { content:""; position:absolute; width:10px; height:10px; border-color:#5c96bc88; border-style:solid; }
+.slide-etch::before { top:8px; left:8px; border-width:1px 0 0 1px; }
+.slide-etch::after { right:8px; bottom:8px; border-width:0 1px 1px 0; }
+.slide-copy { padding:14px 18px 17px; font-size:12px; line-height:1.55; }
+.slide-copy p { margin:0 0 9px; }
+.slide-system { color:#356b91; font-size:10px; font-weight:650; letter-spacing:.04em; }
+.slide-observe { color:#43617f; }
+.slide-note { display:block; font-size:9px; color:#486783; border-top:1px solid #97b8d446; padding-top:10px; }
+.study-launch { position:absolute; top:88px; right:24px; z-index:9; background:var(--glass-surface); border:1px solid white; backdrop-filter:blur(16px); }
+@media (max-width:1100px) {
+  .organ-slide { width:260px; }
+  .slide-preview { height:140px; }
+  .slide-copy { font-size:11px; padding:12px 16px; }
+  .slide-observe { display:none; }
+}
+@media (max-width:700px) {
+  .organ-slide { top:84px; left:12px; right:12px; width:auto; display:grid; grid-template-columns:118px minmax(0,1fr); border-radius:18px; }
+  .slide-heading { grid-column:1/-1; padding:3px 6px 3px 14px; }
+  .slide-heading h2 { font-size:17px; margin:2px 0 0; }
+  .panel-eyebrow { font-size:8px; }
+  .slide-preview { height:auto; min-height:136px; }
+  .slide-copy { padding:10px 12px; font-size:11px; }
+  .slide-copy p { margin-bottom:6px; }
+  .slide-note { padding-top:6px; font-size:8px; }
+  .study-launch { top:76px; right:12px; }
+}
+@media (max-height:600px) and (min-width:701px) {
+  .organ-slide { top:84px; width:240px; }
+  .slide-preview { height:110px; }
+  .slide-observe, .slide-note { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { .organ-slide { animation:none; } }
+

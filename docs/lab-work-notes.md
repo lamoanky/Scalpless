@@ -13,3 +13,9 @@ Compared the environment history at `197e4d3`, `0168bf8`, and current HEAD with 
 The presentation backdrop and floor now blend out as the platform rises. The original laboratory reflection returns before tools become active. The actual frog meshes, physics, incision coverage and camera handoff are preserved. Native control targets remain 48 px; desktop controls sit closer to the lower edge.
 
 Validation: production build and landing browser checks passed, including same-mesh continuity, final identity transform, shared reflection, reverse scroll, history, cut/lift/place/undo/reset, narrow viewport, and reduced motion.
+
+## Organ study and compact controls
+
+Added a small microscope-slide-inspired study for each of the six removable organ pieces. It is a separate scene with shared geometry/materials, drawn through the existing renderer into a scissored view. Study rotation changes only its clone; it does not add physics bodies, reparent live tissue, or modify the controller. It closes when the organ is released, cancelled, undone or reset. The movement button keeps the nine native movement controls available without leaving them expanded over a small-screen specimen.
+
+Validation: 82 unit tests passed. Build, natural/blue study flows, 390/320 px layouts, all six natural-frog organ removals, and onion dissection passed. A test assertion was corrected to allow Rapier's float32 rounding of a held organ and continued settling of an already placed panel; no specimen behavior was changed. Sampled headless Chrome throughput was approximately 60 fps idle and 53 fps during frog manipulation, 60 fps for onion manipulation. These are local diagnostics, not a hardware guarantee.

@@ -187,6 +187,8 @@ try {
       id,
       `${id} is accessible at its visible grasp point`,
     );
+    assert.equal((await debug()).organStudy.id,id,"Every held organ has a study display");
+    assert(await page.locator("#organ-slide").isVisible());
     if (id === "heart") {
       const held = (await debug()).state;
       await anatomy.click();
@@ -218,6 +220,7 @@ try {
         window.dispatchEvent(new CustomEvent("input:pinchend", { detail: {} })),
       );
     await page.waitForTimeout(450);
+    assert.equal((await debug()).organStudy.id,null,"Releasing clears the study without retaining tissue");
     assert((await debug()).state.pieces[id].detached);
     if (id === "liver")
       assert((await debug()).state.available.some((p) => p.id === "stomach"));
