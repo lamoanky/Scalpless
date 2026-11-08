@@ -120,7 +120,7 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     // is offline; a generated explanation replaces it when available.
     const article=message("model",`${info.description}\n\n${info.observe}`,info.name);
     article.dataset.study=id;explanations.set(id,article);scrollToMessage(article);
-    const question=`Explain the frog's ${info.name.toLowerCase()} shown in the organ study: its function and one visible feature to observe. Keep it concise. This is a 3D organ study, not microscopy.`;
+    const question=`Explain the frog's ${info.name.toLowerCase()} shown in the organ study: its function and one visible feature to observe. Use 1-3 short sentences and at most 45 words. This is a 3D organ study, not microscopy.`;
     const current=++version;setPending(true);setStatus("Explaining this organ…");
     try {
       const answer=await session.ask({question,history:[],context:$("teaching-share").checked?teachingContext(state,id):null});

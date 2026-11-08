@@ -17,6 +17,9 @@ test("proxy holds its own key and ignores client endpoints, roles and keys",asyn
     assert.equal(result.status,200);assert.equal(result.headers.get("cache-control"),"no-store");
     assert.deepEqual(await result.json(),{answer:"Bile [credential removed]"});
     assert.equal(call.options.headers["x-goog-api-key"],key);
+    const instruction=JSON.parse(call.options.body).systemInstruction.parts[0].text;
+    assert.match(instruction,/1-3 short, concise sentences/);
+    assert.match(instruction,/at most 45 words/);
     assert(!JSON.stringify(call).includes("client-secret"));assert(!call.options.body.includes("private"));assert(!call.options.body.includes("Override"));
   });
 });
