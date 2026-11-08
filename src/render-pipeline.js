@@ -33,6 +33,8 @@ export async function createRenderPipeline(renderer, scene, camera) {
       backdrop: { value: background },
       presentationBackdrop: { value: background },
       presentationOpacity: { value: 0 },
+      presentationDisplayReferred: { value: false },
+      presentationCrop: { value: new THREE.Vector2(1, 1) },
       crop: { value: new THREE.Vector2(1, 1) },
       toneMappingExposure: { value: renderer.toneMappingExposure },
       tissueOcclusion: { value: false },
@@ -47,6 +49,8 @@ export async function createRenderPipeline(renderer, scene, camera) {
       uniform sampler2D tDiffuse,coverage,backdrop;
       uniform sampler2D presentationBackdrop;
       uniform float presentationOpacity;
+      uniform bool presentationDisplayReferred;
+      uniform vec2 presentationCrop;
       uniform sampler2D occlusion,depth;
       uniform bool tissueOcclusion,neutralTone;
       uniform mat4 inverseProjection;
@@ -74,9 +78,11 @@ export async function createRenderPipeline(renderer, scene, camera) {
         color=sRGBTransferOETF(vec4(color,1.)).rgb;
         vec3 image=texture2D(backdrop,(vUv-.5)*crop+.5).rgb;
         if(presentationOpacity>0.){
-          vec3 intro=texture2D(presentationBackdrop,vUv).rgb;
-          intro=neutralTone?NeutralToneMapping(intro):ACESFilmicToneMapping(intro);
-          intro=sRGBTransferOETF(vec4(intro,1.)).rgb;
+          vec3 intro=texture2D(presentationBackdrop,(vUv-.5)*presentationCrop+.5).rgb;
+          if(!presentationDisplayReferred){
+            intro=neutralTone?NeutralToneMapping(intro):ACESFilmicToneMapping(intro);
+            intro=sRGBTransferOETF(vec4(intro,1.)).rgb;
+          }
           image=mix(image,intro,presentationOpacity);
         }
         gl_FragColor=vec4(mix(image,color,alpha),1.);
@@ -89,10 +95,20 @@ export async function createRenderPipeline(renderer, scene, camera) {
   composite.uniforms.inverseProjection.value = camera.projectionMatrixInverse;
   composite.material.toneMapped = false;
   composer.addPass(composite);
+  let viewAspect = 1;
+  function updatePresentationCrop() {
+    const image = composite.uniforms.presentationBackdrop.value.image;
+    const aspect = image.width / image.height;
+    composite.uniforms.presentationCrop.value.set(
+      Math.min(1, viewAspect / aspect), Math.min(1, aspect / viewAspect),
+    );
+  }
   return {
-    setPresentationBackdrop(texture, opacity) {
+    setPresentationBackdrop(texture, opacity, { displayReferred = false } = {}) {
       composite.uniforms.presentationBackdrop.value = texture ?? background;
       composite.uniforms.presentationOpacity.value = THREE.MathUtils.clamp(opacity, 0, 1);
+      composite.uniforms.presentationDisplayReferred.value = displayReferred;
+      updatePresentationCrop();
     },
     setNeutralTone(enabled) { composite.uniforms.neutralTone.value = enabled; },
     setTissueOcclusion(enabled) {
@@ -106,12 +122,13 @@ export async function createRenderPipeline(renderer, scene, camera) {
       composite.uniforms.aoTexel.value.set(2 / (w * ratio), 2 / (h * ratio));
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
-      const viewAspect = w / h;
+      viewAspect = w / h;
       const imageAspect = background.image.width / background.image.height;
       composite.uniforms.crop.value.set(
         Math.min(1, viewAspect / imageAspect),
         Math.min(1, imageAspect / viewAspect),
       );
+      updatePresentationCrop();
     },
     render(dt) {
       renderer.setRenderTarget(beauty);

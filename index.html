@@ -8,11 +8,13 @@
     <title>Scalpless</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="preload" as="image" href="./art/frog-landing-poster.webp" />
+    <link rel="preload" as="font" href="./fonts/orbitron-variable.ttf" type="font/ttf" crossorigin />
   </head>
   <body>
-    <main class="scroll-story" aria-label="Scalpless. Scroll to enter the frog dissection lab.">
+    <main class="scroll-story" aria-label="Scalpless. Explore the frog, then start dissection.">
       <div class="story-stage">
         <div id="landing-scene" role="img" aria-label="A blue spotted frog in a luminous glass laboratory"></div>
+        <h1 class="landing-wordmark" aria-label="Scalpless"><span aria-hidden="true">S</span><span aria-hidden="true">C</span><span aria-hidden="true">A</span><span aria-hidden="true">L</span><span aria-hidden="true">P</span><span aria-hidden="true">L</span><span aria-hidden="true">E</span><span aria-hidden="true">S</span><span aria-hidden="true">S</span></h1>
         <div class="lab-reveal" inert aria-hidden="true">
           <iframe id="lab-frame" title="Interactive frog dissection lab" src="./lab.html?specimen=frog&amp;appearance=blue&amp;embed=landing" tabindex="-1" allow="camera 'self'"></iframe>
         </div>
@@ -21,7 +23,11 @@
         <a class="enter-lab icon-control" href="./lab.html?specimen=frog&amp;appearance=blue" aria-label="Enter the frog dissection lab">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
         </a>
-        <button class="scroll-cue icon-control" type="button" aria-label="Scroll into the laboratory">
+        <button class="start-dissection" type="button" disabled>
+          <span>Start dissection</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
+        </button>
+        <button class="scroll-cue icon-control" type="button" aria-label="Scroll to rotate the frog">
           <svg viewBox="0 0 24 32" aria-hidden="true"><rect x="6" y="1" width="12" height="20" rx="6"/><path d="M12 6v5m-5 15 5 5 5-5"/></svg>
         </button>
         <a class="return-home icon-control" href="./" aria-label="Return to the opening scene" hidden>
