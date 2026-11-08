@@ -2,7 +2,10 @@ import { createTeachingSession } from "./teaching-session.js";
 import { DEFAULT_MODEL, HISTORY_LIMIT, QUESTION_LIMIT } from "./teaching-request.js";
 import { teachingContext } from "./organ-guide.js";
 import "./lab-panels.css";
+import astronaut from "./assets/tutor-astronaut.png";
 
+// Astro, the tutor's astronaut persona. Decorative: names come from text.
+const avatar = (cls) => `<img class="${cls}" src="${astronaut}" alt="" draggable="false"/>`;
 const icon = path => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
 
 export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
@@ -12,14 +15,15 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
   launcher.id="teaching-toggle";launcher.type="button";launcher.className="icon-button teaching-launch";
   launcher.setAttribute("aria-label","Open biology teaching chat");launcher.setAttribute("aria-expanded","false");
   launcher.setAttribute("aria-controls","teaching-panel");
-  launcher.innerHTML=icon("M4 4h16v12H9l-5 4V4Zm4 5h8m-8 3h5");
+  launcher.setAttribute("aria-label","Ask Astro, the biology tutor");
+  launcher.innerHTML=avatar("astro-launch");
   const panel=document.createElement("section");panel.id="teaching-panel";panel.className="teaching-panel";panel.hidden=true;
   panel.setAttribute("aria-labelledby","teaching-title");
   panel.innerHTML=`
-    <header class="teaching-heading"><div><span class="panel-eyebrow">SCALPLESS / LEARN</span><h2 id="teaching-title">A closer look.</h2></div>
+    <header class="teaching-heading"><div class="astro-heading">${avatar("astro-portrait")}<div><span class="panel-eyebrow">SCALPLESS / LEARN</span><h2 id="teaching-title">Ask Astro.</h2></div></div>
       <button id="teaching-close" class="icon-button" type="button" aria-label="Close teaching chat">${icon("m6 6 12 12M6 18 18 6")}</button></header>
     <div class="teaching-scroll">
-      <p class="teaching-intro">Ask about your specimen, an organ’s function, or your next step in the virtual lab.</p>
+      <article class="teaching-message model astro-greeting">${avatar("astro-avatar")}<div class="astro-bubble"><span class="message-label">Astro</span><p>Hi, I’m Astro! Ask me about your specimen, what an organ does, or what to try next.</p></div></article>
       <details class="teaching-settings" id="teaching-settings"><summary>Gemini connection <span id="connection-label">Not connected</span></summary>
         <form id="teaching-connect" class="teaching-connect">
           <label for="teaching-mode">Connection</label><select id="teaching-mode"><option value="browser">Session key in this browser</option><option value="server">Server connection · recommended</option></select>
@@ -111,8 +115,13 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
   });
   function message(role,text) {
     const article=document.createElement("article");article.className=`teaching-message ${role}`;
-    const label=document.createElement("span");label.className="message-label";label.textContent=role==="user"?"You":"Gemini";
-    const body=document.createElement("p");body.textContent=text;article.append(label,body);$("teaching-messages").append(article);
+    const label=document.createElement("span");label.className="message-label";label.textContent=role==="user"?"You":"Astro";
+    const body=document.createElement("p");body.textContent=text;
+    if(role==="model") {
+      const bubble=document.createElement("div");bubble.className="astro-bubble";bubble.append(label,body);
+      article.insertAdjacentHTML("afterbegin",avatar("astro-avatar"));article.append(bubble);
+    } else article.append(label,body);
+    $("teaching-messages").append(article);
     while($("teaching-messages").childElementCount>24)$("teaching-messages").firstElementChild.remove();
     return article;
   }
@@ -124,10 +133,16 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
     if(!session.status().configured) {
       $("teaching-settings").open=true;setStatus("Add a session key above, or choose a configured server connection. Nothing has been sent.");return;
     }
-    const current=++version;setPending(true);setStatus("Asking Gemini…");
+    const current=++version;setPending(true);setStatus("Astro is thinking…");
     const pendingMessage=message("user",question);
+    // Astro "types" while the answer is on its way.
+    const thinking=message("model","");thinking.classList.add("is-thinking");
+    thinking.querySelector("p").innerHTML='<span class="astro-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+    const scrollDown=()=>{const scroll=panel.querySelector(".teaching-scroll");scroll.scrollTop=scroll.scrollHeight;};
+    scrollDown();
     try {
       const answer=await session.ask({question,history,context:$("teaching-share").checked?teachingContext(state):null});
+      thinking.remove();
       if(current!==version)return;
       history.push({role:"user",text:question},{role:"model",text:answer});history=history.slice(-HISTORY_LIMIT);
       message("model",answer);$("teaching-question").value="";setStatus("Answer ready.");
@@ -135,7 +150,7 @@ export function installTeachingChat(lab, bench, {onToggle=()=>{}}={}) {
       dispatchEvent(new CustomEvent("teaching:answer"));
       const scroll=panel.querySelector(".teaching-scroll");scroll.scrollTop=scroll.scrollHeight;
     } catch(error) {
-      pendingMessage.remove();
+      thinking.remove();pendingMessage.remove();
       if(current===version)setStatus(error.message||"The teaching service is unavailable. Please try again.");
     } finally {if(current===version)setPending(false);}
   };
