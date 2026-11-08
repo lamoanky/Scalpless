@@ -44,7 +44,8 @@ const paths = {
   section: "M12 3v18C0 21 0 3 12 3Zm4 2c7 4 7 11 0 15V5Z",
   membrane: "m4 6 12-3 5 15-12 3L4 6Zm1 5 12-3M7 16l12-3M9 5l5 15",
   alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
-  reset: "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 6M4 12l1 6a8 8 0 0 0 14-2",
+  // Two r=8 arcs around (12,12); each ends exactly on its arrowhead corner.
+  reset: "M4 12a8 8 0 0 1 14.93-4M18.93 3v5h-5M20 12a8 8 0 0 1-14.93 4M5.07 21v-5h5",
   lesson: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 14a2 2 0 0 1 2-2h13M8 7h7M8 11h5",
   frog: "M8 5a3 3 0 1 0-4 4m12-4a3 3 0 1 1 4 4M7 7c-3 3-1 10 5 10s8-7 5-10M6 12l-4 3 4 2-2 4 6-4m8-5 4 3-4 2 2 4-6-4M9 9h.01M15 9h.01",
   onion:
