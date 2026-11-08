@@ -470,9 +470,10 @@ button:disabled {
 /* Guided lesson card: same glass panel language as the hand-tracking panel. */
 .lesson {
   position: absolute;
-  /* Bottom-left: placed tissue collects at the upper left of the bench. */
-  bottom: 18px;
-  left: 18px;
+  /* Top right, under the camera launcher: the tools live bottom left, the
+     specimen switcher top left, and placed tissue collects on the left. */
+  top: 88px;
+  right: 24px;
   z-index: 5;
   width: 300px;
   padding: 14px 16px 16px;
@@ -574,9 +575,8 @@ button:disabled {
 }
 @media (max-width: 700px) {
   .lesson {
-    top: 10px;
-    bottom: auto;
-    left: 10px;
+    top: 70px;
+    right: 10px;
     width: calc(100vw - 270px);
     min-width: 150px;
     padding: 10px 12px 12px;

@@ -19,15 +19,24 @@ test('the epidermis is pre-selected and peels with a short drag',async({page})=>
   await page.locator('#place-action').click();
   await peel(page,'layer-0');
   await peel(page,'layer-1');
-  await page.waitForTimeout(1500); // let the placed layer settle
+  // Physics may still be settling the placed layer; wait for its grip to stop moving.
+  let previous=null;
+  await expect.poll(async()=>{
+    const grip=(await debug(page)).graspPoints.epidermis;
+    const still=previous&&Math.hypot(grip.x-previous.x,grip.y-previous.y)<.001;
+    previous=grip;return still;
+  },{intervals:[400],timeout:15000}).toBe(true);
   const ready=await debug(page);
   expect(ready.state.selected).toBe('epidermis');
-  const grip=ready.graspPoints.epidermis,size=page.viewportSize();
+  const size=page.viewportSize();
+  // The placed layer can still drift a few mm; aim at the ring where it is now.
+  await page.mouse.move(ready.graspPoints.epidermis.x*size.width,ready.graspPoints.epidermis.y*size.height);
+  const grip=(await debug(page)).graspPoints.epidermis;
   const x=grip.x*size.width,y=grip.y*size.height;
   await page.mouse.move(x,y);
   await page.mouse.down();
   await expect.poll(async()=>(await debug(page)).state.held).toBe('epidermis');
-  await page.mouse.move(x+70,y-70,{steps:4});
+  await page.mouse.move(x+90,y-90,{steps:4});
   await page.mouse.up();
   await expect.poll(async()=>(await debug(page)).state.pieces.epidermis.detached).toBe(true);
 });
