@@ -114,6 +114,8 @@ export function installInput(lab, bench) {
   window.addEventListener("keydown", (e) => {
     if (e.target.matches("input,select,textarea,[contenteditable=true]"))
       return;
+    // The microscope dialog owns the keyboard (Esc closes it, not the grab).
+    if (document.querySelector("dialog[open]")) return;
     const key = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && key === "z") {
       e.preventDefault();

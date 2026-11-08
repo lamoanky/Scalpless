@@ -5,6 +5,7 @@ import { createPhysics } from "./physics.js";
 import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
 import {installGestureCamera} from './gesture-camera.js';
+import { installMicroscope, microscopeIcon } from "./microscope.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -63,6 +64,7 @@ $("camera-angles").setAttribute("aria-expanded", "false");
 $("camera-angles").setAttribute("aria-controls", "camera-pad");
 $("piece-menu").innerHTML = icon("layers");
 $("place-action").innerHTML = icon("place");
+$("microscope-action").innerHTML = microscopeIcon;
 $("manipulation-pad").innerHTML = [
   ["0,0,-1", "up", "Move away (↑)"], ["0,1,0", "lift", "Lift (Page Up)"],
   ["rotate-left", "rotateLeft", "Rotate left (Q)"], ["-1,0,0", "left", "Move left (←)"],
@@ -118,6 +120,23 @@ try {
   $("piece-select").onchange = (e) => lab.select(e.target.value);
   $("primary-action").onclick = () => lab.primaryAction();
   $("place-action").onclick = () => lab.placeInTray();
+  const microscope = installMicroscope();
+  // Mouse grabs end on pointerup, so the last piece picked up stays inspectable.
+  let lastPicked = null;
+  const inspectTarget = () => lab.held?.id ?? lastPicked;
+  const inspectHeld = () => {
+    const id = inspectTarget();
+    if (!id) return;
+    // A mouse drag cannot survive a modal stealing the pointer; set it down first.
+    if (lab.held && !bench.gesturesActive) lab.endGrab();
+    microscope.open(id, lab.onion.parts.get(id).label);
+  };
+  $("microscope-action").onclick = inspectHeld;
+  window.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "m" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.matches("input,select,textarea") || microscope.isOpen) return;
+    inspectHeld();
+  });
   $("manipulation-pad").onclick = (e) => {
     const action = e.target.closest("button")?.dataset.move;
     if (!action) return;
@@ -192,6 +211,10 @@ try {
     }
     $("primary-action").disabled = lab.autoCut;
     $("place-action").hidden = !detached;
+    if (state.held) lastPicked = state.held;
+    if (!state.cutOpen) lastPicked = null;
+    $("microscope-action").hidden = !inspectTarget() || state.tool !== "hand";
+    $("microscope-action").setAttribute("aria-label", `Inspect ${lab.onion.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`);
     $("manipulation-pad").hidden = !state.held;
     $("tool-hint").textContent =
       state.tool === "inspect"

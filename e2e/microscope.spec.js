@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+test.use({deviceScaleFactor:.3});
+const debug=page=>page.evaluate(()=>window.__scalpless.getDebug());
+test('picked-up tissue can be inspected under the microscope',async({page})=>{
+  await page.goto('/');
+  await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
+  await page.keyboard.press('s');
+  await page.locator('#primary-action').click();
+  await expect.poll(async()=>(await debug(page)).state.cutOpen,{timeout:60000}).toBe(true);
+  await page.keyboard.press('h');
+  await expect(page.locator('#microscope-action')).toBeHidden();
+  await page.locator('#primary-action').click();
+  await expect.poll(async()=>(await debug(page)).state.held).toBe('section');
+  await expect(page.locator('#microscope-action')).toBeVisible();
+  await page.locator('#microscope-action').click();
+  const dialog=page.locator('#microscope');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('h2')).toHaveText('Cut section · 100×');
+  await expect.poll(async()=>(await debug(page)).state.held).toBe(null);
+  await dialog.locator('[data-mag="400"]').click();
+  await expect(dialog.locator('h2')).toHaveText('Cut section · 400×');
+  await dialog.locator('[data-stain]').selectOption('methylene');
+  await page.waitForTimeout(300);
+  await page.screenshot({path:'test-results/microscope.png'});
+  // Esc closes the microscope without resetting the bench.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  const after=await debug(page);
+  expect(after.state.cutOpen).toBe(true);
+  await page.keyboard.press('m');
+  await expect(dialog).toBeVisible();
+});
