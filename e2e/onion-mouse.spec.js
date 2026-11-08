@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 test.use({deviceScaleFactor:.3});
 const debug=page=>page.evaluate(()=>window.__scalpless.getDebug());
 test('original onion UI supports keyboard incision, mouse pickup, placement, peeling and reset',async({page})=>{
-  await page.goto('/');
+  await page.goto('/lab.html');
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
   await page.keyboard.press('s');
   await page.locator('#primary-action').click();

@@ -120,7 +120,8 @@ export function installLesson({ lab, toggle, announce, restart, inputMode, input
     <p class="lesson-gesture"><span>With webcam</span> <span class="lesson-gesture-text"></span></p>
     <ol class="lesson-steps" aria-hidden="true"></ol>
     <button type="button" class="lesson-restart" hidden>Start over</button>`;
-  document.querySelector("#bench").append(card);
+  // Outside #bench: the bench itself stays text-free (icons + aria labels).
+  document.body.append(card);
   const inspected = new Set();
   let hidden = storage.get(), lastStep = -1, lastTarget = null;
 

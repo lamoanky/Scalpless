@@ -1,6 +1,20 @@
 import { defineConfig } from "vite";
-import {resolve} from 'node:path';
+import { fileURLToPath } from "node:url";
 export default defineConfig({
   base: "./",
-  build: { chunkSizeWarningLimit: 5500, rolldownOptions:{input:{main:resolve(import.meta.dirname,'index.html'),gestures:resolve(import.meta.dirname,'gesture-lab.html')}} },
+  // Prebundle the lazy camera SDK at startup. Otherwise the first camera click
+  // can trigger Vite's dependency-discovery reload and cancel permission setup.
+  optimizeDeps: { include: ["@mediapipe/tasks-vision"] },
+  build: {
+    chunkSizeWarningLimit: 5500,
+    rolldownOptions: {
+      input: {
+        landing: fileURLToPath(new URL("./index.html", import.meta.url)),
+        lab: fileURLToPath(new URL("./lab.html", import.meta.url)),
+        sandbox: fileURLToPath(
+          new URL("./gesture-sandbox.html", import.meta.url),
+        ),
+      },
+    },
+  },
 });

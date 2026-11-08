@@ -4,11 +4,15 @@ import { createOnion } from "./specimens/onion.js";
 import { createPhysics } from "./physics.js";
 import { LabController } from "./lab-controller.js";
 import { installInput } from "./input.js";
-import {installGestureCamera} from './gesture-camera.js';
+import { installHandTracking } from "./hand-tracking.js";
 import { installMicroscope, microscopeIcon } from "./microscope.js";
 import { installLesson } from "./lesson.js";
 
 const $ = (id) => document.getElementById(id);
+const specimenId =
+  new URLSearchParams(location.search).get("specimen") === "frog"
+    ? "frog"
+    : "onion";
 const paths = {
   inspect: "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
   scalpel: "m15 3 6 6-10 10-7 2 2-7L15 3Zm-9 11 5 5M14 5l5 5",
@@ -36,32 +40,63 @@ const paths = {
   alert: "m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
   reset: "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 6M4 12l1 6a8 8 0 0 0 14-2",
   lesson: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 14a2 2 0 0 1 2-2h13M8 7h7M8 11h5",
+  frog: "M8 5a3 3 0 1 0-4 4m12-4a3 3 0 1 1 4 4M7 7c-3 3-1 10 5 10s8-7 5-10M6 12l-4 3 4 2-2 4 6-4m8-5 4 3-4 2 2 4-6-4M9 9h.01M15 9h.01",
+  onion:
+    "M10 3c1 4-6 5-6 11a8 8 0 0 0 16 0c0-6-7-7-6-11M12 5c-6 6-6 14 0 17m0-17c6 6 6 14 0 17",
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
 $("tools").innerHTML = `<div class="tool-group">${[
-  ["inspect", "Inspect (V)"], ["scalpel", "Scalpel (S)"], ["hand", "Forceps (H)"],
-].map(([id, label]) => `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === 'inspect'}">${icon(id)}</button>`).join("")}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
+  ["inspect", "Inspect (V)"],
+  ["scalpel", "Scalpel (S)"],
+  ["hand", "Forceps (H)"],
+]
+  .map(
+    ([id, label]) =>
+      `<button class="tool-button" data-tool="${id}" aria-label="${label}" aria-pressed="${id === "inspect"}">${icon(id)}</button>`,
+  )
+  .join(
+    "",
+  )}</div><span class="divider" aria-hidden="true"></span><div class="tool-group">${[
   ["lesson-toggle", "lesson", "Guided lesson"],
   ["camera-angles", "camera", "Camera controls"],
   ["hints", "hints", "Show incision and grasp hints"],
   ["undo", "undo", "Undo last operation (⌘/Ctrl Z)"],
   ["reset", "reset", "Reset bench (R)"],
-].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}" ${id === 'hints' || id === 'lesson-toggle' ? 'aria-pressed="false"' : ''}>${icon(i)}</button>`).join("")}</div>`;
+]
+  .map(
+    ([id, i, label]) =>
+      `<button class="icon-button" id="${id}" aria-label="${label}" ${id === "hints" || id === "lesson-toggle" ? 'aria-pressed="false"' : ""}>${icon(i)}</button>`,
+  )
+  .join("")}</div>`;
 const cameraPad = document.createElement("div");
 cameraPad.className = "camera-pad";
 cameraPad.hidden = true;
 cameraPad.id = "camera-pad";
 cameraPad.setAttribute("role", "group");
 cameraPad.setAttribute("aria-label", "Camera controls");
-cameraPad.innerHTML = [
-  ["zoom-out", "minus", "Zoom out (−)"],
-  ["zoom-in", "plus", "Zoom in (+)"],
-  ["home-view", "home", "Return to working view"],
-].map(([id, i, label]) => `<button class="icon-button" id="${id}" aria-label="${label}">${icon(i)}</button>`).join("") + [
-  ["-.15,0", "left", "Orbit left"], ["0,-.12", "up", "Orbit up"],
-  ["0,.12", "down", "Orbit down"], [".15,0", "right", "Orbit right"],
-].map(([value, i, label]) => `<button class="icon-button" data-orbit="${value}" aria-label="${label}">${icon(i)}</button>`).join("");
+cameraPad.innerHTML =
+  [
+    ["zoom-out", "minus", "Zoom out (−)"],
+    ["zoom-in", "plus", "Zoom in (+)"],
+    ["home-view", "home", "Return to working view"],
+  ]
+    .map(
+      ([id, i, label]) =>
+        `<button class="icon-button" id="${id}" aria-label="${label}">${icon(i)}</button>`,
+    )
+    .join("") +
+  [
+    ["-.15,0", "left", "Orbit left"],
+    ["0,-.12", "up", "Orbit up"],
+    ["0,.12", "down", "Orbit down"],
+    [".15,0", "right", "Orbit right"],
+  ]
+    .map(
+      ([value, i, label]) =>
+        `<button class="icon-button" data-orbit="${value}" aria-label="${label}">${icon(i)}</button>`,
+    )
+    .join("");
 document.querySelector(".controls-area").prepend(cameraPad);
 $("camera-angles").setAttribute("aria-expanded", "false");
 $("camera-angles").setAttribute("aria-controls", "camera-pad");
@@ -69,29 +104,102 @@ $("piece-menu").innerHTML = icon("layers");
 $("place-action").innerHTML = icon("place");
 $("microscope-action").innerHTML = microscopeIcon;
 $("manipulation-pad").innerHTML = [
-  ["0,0,-1", "up", "Move away (↑)"], ["0,1,0", "lift", "Lift (Page Up)"],
-  ["rotate-left", "rotateLeft", "Rotate left (Q)"], ["-1,0,0", "left", "Move left (←)"],
-  ["0,0,1", "down", "Move closer (↓)"], ["1,0,0", "right", "Move right (→)"],
-  ["0,-1,0", "lower", "Lower (Page Down)"], ["release", "release", "Release tissue"],
+  ["0,0,-1", "up", "Move away (↑)"],
+  ["0,1,0", "lift", "Lift (Page Up)"],
+  ["rotate-left", "rotateLeft", "Rotate left (Q)"],
+  ["-1,0,0", "left", "Move left (←)"],
+  ["0,0,1", "down", "Move closer (↓)"],
+  ["1,0,0", "right", "Move right (→)"],
+  ["0,-1,0", "lower", "Lower (Page Down)"],
+  ["release", "release", "Release tissue"],
   ["rotate-right", "rotateRight", "Rotate right (E)"],
-].map(([action, i, label]) => `<button class="icon-button" data-move="${action}" aria-label="${label}">${icon(i)}</button>`).join("");
+]
+  .map(
+    ([action, i, label]) =>
+      `<button class="icon-button" data-move="${action}" aria-label="${label}">${icon(i)}</button>`,
+  )
+  .join("");
 
 try {
-  const bench = await createBench($("scene")),
-    onion = await createOnion(bench.scene),
+  const bench = await createBench(
+      $("scene"),
+      specimenId === "frog"
+        ? { position: [-0.02, 0.36, 0.21], target: [-0.078, 0.035, 0] }
+        : {},
+    ),
+    specimen =
+      specimenId === "frog"
+        ? await (await import("./specimens/frog.js")).createFrog(bench.scene)
+        : await createOnion(bench.scene),
     physics = await createPhysics(),
-    lab = new LabController(bench, onion, physics);
-  bench.setSpecimen(onion);
-  installInput(lab, bench);
-  const gestures=installGestureCamera(bench,lab);
-  document
-    .querySelectorAll("button[data-tool]")
-    .forEach((button) =>
-      button.addEventListener("click", () => lab.setTool(button.dataset.tool)),
-    );
+    lab = new LabController(bench, specimen, physics);
+  bench.setSpecimen(specimen);
+  $("bench").setAttribute(
+    "aria-label",
+    `Interactive ${specimen.label.toLowerCase()} dissection bench`,
+  );
+  document.title = `Scalpless — ${specimen.label} dissection`;
+  const specimenSwitcher = document.createElement("nav");
+  specimenSwitcher.className = "specimen-switcher";
+  specimenSwitcher.setAttribute("aria-label", "Choose specimen");
+  specimenSwitcher.innerHTML = ["onion", "frog"]
+    .map(
+      (id) =>
+        `<a class="icon-button" href="./lab.html?specimen=${id}" aria-label="Open ${id} dissection" title="${id === "frog" ? "Frog · basic anatomy" : "Onion"}" ${id === specimenId ? 'aria-current="page"' : ""}>${icon(id)}</a>`,
+    )
+    .join("");
+  $("bench").append(specimenSwitcher);
+  let anatomyButton;
+  function setAnatomyView(enabled) {
+    if (!anatomyButton) return;
+    specimen.setAnatomyView(enabled);
+    anatomyButton.setAttribute("aria-pressed", String(enabled));
+  }
+  if (specimen.setAnatomyView) {
+    anatomyButton = document.createElement("button");
+    anatomyButton.id = "anatomy-view";
+    anatomyButton.className = "icon-button anatomy-toggle";
+    anatomyButton.type = "button";
+    anatomyButton.setAttribute("aria-label", "Translucent anatomy view");
+    anatomyButton.setAttribute("aria-pressed", "false");
+    anatomyButton.title = "Translucent anatomy view";
+    anatomyButton.innerHTML = icon("layers");
+    anatomyButton.onclick = () => setAnatomyView(!specimen.anatomyView);
+    $("bench").append(anatomyButton);
+  }
+  const input = installInput(lab, bench);
+  // Mirror the active input on the bench so the lesson can switch its wording.
+  const setInputSource = input.setSource.bind(input);
+  input.setSource = (next) => {
+    setInputSource(next);
+    bench.host.dataset.input = next === "webcam" ? "webcam" : "mouse";
+  };
+  bench.host.dataset.input = "mouse";
+  const handTracking = installHandTracking(bench, input);
+  document.querySelectorAll("button[data-tool]").forEach((button) =>
+    button.addEventListener("click", () => {
+      closeMenus();
+      lab.setTool(button.dataset.tool);
+    }),
+  );
   $("zoom-out").onclick = () => bench.zoom(-1);
   $("zoom-in").onclick = () => bench.zoom(1);
-  $("home-view").onclick = () => bench.home();
+  $("home-view").onclick = () => {
+    bench.home();
+    closeMenus();
+  };
+  function closeMenus() {
+    cameraPad.hidden = true;
+    $("camera-angles").setAttribute("aria-expanded", "false");
+    $("piece-picker").hidden = true;
+    $("piece-menu").setAttribute("aria-expanded", "false");
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenus();
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".controls-area,.context-controls")) closeMenus();
+  });
   $("camera-angles").onclick = () => {
     cameraPad.hidden = !cameraPad.hidden;
     $("camera-angles").setAttribute("aria-expanded", String(!cameraPad.hidden));
@@ -103,16 +211,18 @@ try {
   $("hints").onclick = () => lab.toggleHints();
   $("undo").onclick = () => lab.undo();
   $("reset").onclick = () => {
-    gestures.reset();
-    cameraPad.hidden = true;
-    $("camera-angles").setAttribute("aria-expanded", "false");
+    closeMenus();
     lab.reset();
+    setAnatomyView(false);
   };
   $("piece-menu").onclick = () => {
     $("piece-picker").hidden = !$("piece-picker").hidden;
-    $("piece-menu").setAttribute("aria-expanded", String(!$("piece-picker").hidden));
+    $("piece-menu").setAttribute(
+      "aria-expanded",
+      String(!$("piece-picker").hidden),
+    );
   };
-  $("piece-picker").onclick = e => {
+  $("piece-picker").onclick = (e) => {
     const button = e.target.closest("[data-piece]");
     if (!button) return;
     lab.select(button.dataset.piece);
@@ -123,21 +233,22 @@ try {
   $("piece-select").onchange = (e) => lab.select(e.target.value);
   $("primary-action").onclick = () => lab.primaryAction();
   $("place-action").onclick = () => lab.placeInTray();
-  const microscope = installMicroscope();
+  // The microscope models onion tissue only.
+  const microscope = specimen.id === "onion" ? installMicroscope() : null;
   // Mouse grabs end on pointerup, so the last piece picked up stays inspectable.
   let lastPicked = null;
-  const inspectTarget = () => lab.held?.id ?? lastPicked;
+  const inspectTarget = () => (microscope ? (lab.held?.id ?? lastPicked) : null);
   const inspectHeld = () => {
     const id = inspectTarget();
     if (!id) return;
-    // A mouse drag cannot survive a modal stealing the pointer; set it down first.
-    if (lab.held && !bench.gesturesActive) lab.endGrab();
-    microscope.open(id, lab.onion.parts.get(id).label);
+    // A pointer drag cannot survive a modal stealing the pointer; set it down first.
+    if (lab.held && input.source !== "webcam") lab.endGrab();
+    microscope.open(id, specimen.parts.get(id).label);
   };
   $("microscope-action").onclick = inspectHeld;
   window.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() !== "m" || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.target.matches("input,select,textarea") || microscope.isOpen) return;
+    if (e.target.matches("input,select,textarea") || microscope?.isOpen) return;
     inspectHeld();
   });
   $("manipulation-pad").onclick = (e) => {
@@ -148,8 +259,10 @@ try {
       lab.rotateHeld(action === "rotate-left" ? -1 : 1);
     else lab.moveHeld(...action.split(",").map(Number));
   };
-  let optionKey = "", actionKey = "";
+  let optionKey = "",
+    actionKey = "";
   function updateUI(state, message) {
+    anatomyButton?.setAttribute("aria-pressed", String(specimen.anatomyView));
     document
       .querySelectorAll("button[data-tool]")
       .forEach((b) =>
@@ -176,22 +289,46 @@ try {
       $("piece-select").replaceChildren(
         ...state.available.map((p) => new Option(p.label, p.id)),
       );
-      $("piece-picker").replaceChildren(...state.available.map(p => {
-        const button = document.createElement("button");
-        button.className = "icon-button tissue-choice";
-        button.dataset.piece = p.id;
-        button.setAttribute("aria-label", p.label);
-        button.innerHTML = icon(p.id === "section" ? "section" : p.id === "epidermis" ? "membrane" : "layers");
-        // A progressively lighter pigment identifies deeper fleshy layers visually.
-        const layer = Number(p.id.split("-")[1]);
-        if (Number.isFinite(layer)) button.style.setProperty("--tissue", `hsl(305 32% ${34 + layer * 5}%)`);
-        return button;
-      }));
+      $("piece-picker").replaceChildren(
+        ...state.available.map((p) => {
+          const button = document.createElement("button");
+          button.className = "icon-button tissue-choice";
+          button.dataset.piece = p.id;
+          button.setAttribute("aria-label", p.label);
+          button.title = p.label;
+          button.innerHTML = icon(
+            p.interaction === "lift"
+              ? "section"
+              : p.id === "epidermis"
+                ? "membrane"
+                : "layers",
+          );
+          // A progressively lighter pigment identifies deeper fleshy layers visually.
+          const layer = Number(p.id.split("-")[1]);
+          if (p.color) button.style.setProperty("--tissue", p.color);
+          if (Number.isFinite(layer))
+            button.style.setProperty(
+              "--tissue",
+              `hsl(305 32% ${34 + layer * 5}%)`,
+            );
+          return button;
+        }),
+      );
       optionKey = key;
     }
     $("piece-select").value = state.selected;
-    $("piece-picker").querySelectorAll("[data-piece]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.piece === state.selected)));
-    $("cut-progress").setAttribute("aria-valuenow", String(Math.round(state.cut * 100)));
+    $("piece-picker")
+      .querySelectorAll("[data-piece]")
+      .forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.piece === state.selected),
+        ),
+      );
+    $("cut-progress").setAttribute(
+      "aria-valuenow",
+      String(Math.round(state.cut * 100)),
+    );
     const detached = state.held && state.pieces[state.held].detached;
     const actionLabel =
       state.tool === "scalpel"
@@ -202,11 +339,21 @@ try {
           ? detached
             ? "Release tissue"
             : "Peel further"
-          : state.selected === "section" ||
+          : state.available.find((p) => p.id === state.selected)
+                ?.interaction === "lift" ||
               state.pieces[state.selected]?.detached
             ? "Lift selected piece"
             : "Grasp & peel";
-    const actionIcon = state.tool === "scalpel" ? (state.cutOpen ? "hand" : "scalpel") : state.held ? (detached ? "release" : "peel") : "lift";
+    const actionIcon =
+      state.tool === "scalpel"
+        ? state.cutOpen
+          ? "hand"
+          : "scalpel"
+        : state.held
+          ? detached
+            ? "release"
+            : "peel"
+          : "lift";
     $("primary-action").setAttribute("aria-label", actionLabel);
     if (actionKey !== actionIcon) {
       $("primary-action").innerHTML = icon(actionIcon);
@@ -217,7 +364,10 @@ try {
     if (state.held) lastPicked = state.held;
     if (!state.cutOpen) lastPicked = null;
     $("microscope-action").hidden = !inspectTarget() || state.tool !== "hand";
-    $("microscope-action").setAttribute("aria-label", `Inspect ${lab.onion.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`);
+    $("microscope-action").setAttribute(
+      "aria-label",
+      `Inspect ${specimen.parts.get(inspectTarget())?.label.toLowerCase() ?? "tissue"} under microscope (M)`,
+    );
     $("manipulation-pad").hidden = !state.held;
     $("tool-hint").textContent =
       state.tool === "inspect"
@@ -225,26 +375,36 @@ try {
         : state.tool === "scalpel"
           ? state.cutOpen
             ? "The section is free. Switch to forceps to lift it."
-            : "Drag along the front seam. Short strokes add up. Right drag to look around."
+            : specimenId === "frog"
+              ? "Trace around the abdominal panel. Short strokes add up. Turn on hints to see the incision."
+              : "Drag along the front seam. Short strokes add up. Right drag to look around."
           : state.held
             ? detached
               ? "Drag to carry · Q / E to rotate · Release to place"
               : "Pull away to peel. Move back to relax. Esc to cancel."
             : state.cutOpen
-              ? "Grasp an exposed edge and pull gently. Right drag to look around."
+              ? specimenId === "frog"
+                ? "Lift the abdominal panel, then grasp exposed organs. Remove the liver to reach the stomach and intestines."
+                : "Grasp an exposed edge and pull gently. Right drag to look around."
               : "Make the incision with the scalpel first.";
-    if (message) $("status").textContent = message;
+    if (message && $("status").textContent !== message)
+      $("status").textContent = message;
   }
   lab.subscribe(updateUI);
   updateUI(lab.getState());
-  installLesson({
-    lab,
-    toggle: $("lesson-toggle"),
-    announce: (text) => { $("status").textContent = text; },
-    restart: () => $("reset").click(),
-    inputMode: () => bench.host.dataset.input ?? "mouse",
-    inputHost: bench.host,
-  });
+  // The guided lesson follows the onion dissection.
+  if (specimen.id === "onion")
+    installLesson({
+      lab,
+      toggle: $("lesson-toggle"),
+      announce: (text) => {
+        $("status").textContent = text;
+      },
+      restart: () => $("reset").click(),
+      inputMode: () => bench.host.dataset.input ?? "mouse",
+      inputHost: bench.host,
+    });
+  else $("lesson-toggle").hidden = true;
   let last = performance.now(),
     accumulator = 0,
     frames = [],
@@ -261,7 +421,6 @@ try {
       accumulator -= 1 / 60;
     }
     lab.update(dt);
-    gestures.update(dt);
     bench.controls.update();
     bench.render(dt);
     frames.push(elapsed);
@@ -278,13 +437,25 @@ try {
   window.__scalpless = {
     getDebug: () => ({
       ...lab.getDebug(),
-      gestures:gestures.getDebug(),
       fps: frames.length / frames.reduce((a, b) => a + b, 0),
       manipulationFps: manipulationFrames.length
         ? manipulationFrames.length /
           manipulationFrames.reduce((a, b) => a + b, 0)
         : null,
       physicsBodies: physics.bodies.size,
+      physicalPieces: Object.fromEntries(
+        [...physics.bodies].map(([id, { body }]) => [
+          id,
+          {
+            velocity: body.linvel(),
+            sleeping: body.isSleeping(),
+            colliders: body.numColliders(),
+            mass: body.mass(),
+          },
+        ]),
+      ),
+      handTracking: handTracking.getDebug(),
+      anatomyView: specimen.anatomyView ?? false,
     }),
   };
 } catch (error) {

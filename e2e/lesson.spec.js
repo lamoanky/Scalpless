@@ -9,7 +9,7 @@ const peel=async(page,id)=>{
   await expect.poll(async()=>(await debug(page)).state.held).toBe(null);
 };
 test('guided lesson walks through the whole dissection',async({page})=>{
-  await page.goto('/');
+  await page.goto('/lab.html');
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
   const lesson=page.locator('#lesson'),title=lesson.locator('.lesson-title');
   await expect(title).toHaveText('Pick up the scalpel');

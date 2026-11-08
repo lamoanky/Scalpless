@@ -3,15 +3,15 @@ import { PLATFORM } from "./lab-environment.js";
 import { CutCoverage, OperationHistory } from "./domain.js";
 
 export class LabController {
-  constructor(bench, onion, physics) {
+  constructor(bench, specimen, physics) {
     this.bench = bench;
-    this.onion = onion;
+    this.specimen = specimen;
     this.physics = physics;
     this.coverage = new CutCoverage();
     this.history = new OperationHistory();
     this.tool = "inspect";
     this.hints = false;
-    this.selected = "section";
+    this.selected = specimen.openingPartId;
     this.held = null;
     this.cutting = false;
     this.autoCut = false;
@@ -21,7 +21,7 @@ export class LabController {
     this.hover = null;
     this.settling = new Map();
     this.states = {};
-    for (const part of onion.parts.values())
+    for (const part of specimen.parts.values())
       this.states[part.id] = {
         detached: false,
         separation: 0,
@@ -30,7 +30,6 @@ export class LabController {
       };
     this.initial = this.snapshot();
     this.message = "";
-    this.membraneReady = false;
   }
   subscribe(listener) {
     this.listeners.add(listener);
@@ -47,6 +46,7 @@ export class LabController {
   }
   getState() {
     return {
+      specimen: this.specimen.id,
       tool: this.tool,
       hints: this.hints,
       cut: this.coverage.fraction,
@@ -57,6 +57,8 @@ export class LabController {
       available: this.available().map((p) => ({
         id: p.id,
         label: p.label,
+        interaction: p.interaction,
+        color: p.color,
         detached: this.states[p.id].detached,
       })),
       pieces: structuredClone(this.states),
@@ -66,40 +68,26 @@ export class LabController {
     return this.coverage.complete;
   }
   get sectionMoved() {
-    const part = this.onion.parts.get("section");
-    return (
-      this.states.section.detached &&
-      part.group.position.distanceTo(this.onion.origin) > 0.025
-    );
+    return this.specimen.isOpen(this.states);
   }
-  // The membrane waits on the inner face of the peeled layer 1 until pulled free.
+  available() {
+    return this.cutOpen ? this.specimen.available(this.states) : [];
+  }
+  // Onion only: the membrane waits on the inner face of the peeled layer 1.
   get epidermisReady() {
     return (
+      this.specimen.id === "onion" &&
       this.cutOpen &&
       this.states["layer-1"].detached &&
       !this.states.epidermis.detached
     );
-  }
-  available() {
-    if (!this.cutOpen) return [];
-    const result = [this.onion.parts.get("section")];
-    if (this.sectionMoved) {
-      for (let i = 0; i < 8; i++) {
-        const p = this.onion.parts.get(`layer-${i}`);
-        result.push(p);
-        if (!this.states[p.id].detached) break;
-      }
-    }
-    if (this.states["layer-1"].detached)
-      result.push(this.onion.parts.get("epidermis"));
-    return result;
   }
   snapshot() {
     return {
       bins: this.coverage.snapshot(),
       selected: this.selected,
       states: structuredClone(this.states),
-      transforms: [...this.onion.parts.values()].map((p) => ({
+      transforms: [...this.specimen.parts.values()].map((p) => ({
         id: p.id,
         position: p.group.position.toArray(),
         quaternion: p.group.quaternion.toArray(),
@@ -117,26 +105,25 @@ export class LabController {
     this.coverage.restore(snapshot.bins);
     this.states = structuredClone(snapshot.states);
     this.selected = snapshot.selected;
-    this.membraneReady = false;
-    this.onion.prepareMembrane(
-      this.states["layer-1"].bend,
-      new THREE.Vector3(...this.states["layer-1"].direction),
-    );
+    this.specimen.restoreAttachments?.(this.states);
     for (const t of snapshot.transforms) {
-      const part = this.onion.parts.get(t.id);
+      const part = this.specimen.parts.get(t.id);
       part.group.position.fromArray(t.position);
       part.group.quaternion.fromArray(t.quaternion);
       part.group.visible = t.visible;
-      this.onion.deform(
+      this.specimen.deform(
         part,
         this.states[t.id].bend,
         new THREE.Vector3(...this.states[t.id].direction),
       );
     }
-    for (const part of this.onion.parts.values())
+    for (const part of this.specimen.parts.values())
       if (this.states[part.id].detached) this.physics.createBody(part);
-    this.physics.syncSpecimen(this.onion.parts, this.states);
-    this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen, flash: false });
+    this.physics.syncSpecimen(this.specimen, this.states);
+    this.specimen.updateCut(this.coverage.bins, {
+      complete: this.cutOpen,
+      flash: false,
+    });
     this.bench.controls.enabled = true;
     this.bench.host.classList.remove("is-holding");
     this.bench.restTools();
@@ -171,18 +158,17 @@ export class LabController {
     )
       return false;
     this.pointer.set(detail.x * 2 - 1, 1 - detail.y * 2);
-    this.bench.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.bench.camera);
     return true;
   }
   pick(detail) {
     if (!this.pointerRay(detail)) return null;
-    const objects = [...this.onion.parts.values()]
+    const objects = [...this.specimen.parts.values()]
       .filter((p) => p.group.visible)
       .flatMap((p) => p.meshes);
     const hit = this.raycaster.intersectObjects(objects, false)[0];
     if (hit) {
-      hit.part = this.onion.parts.get(hit.object.userData.partId);
+      hit.part = this.specimen.parts.get(hit.object.userData.partId);
       hit.normal = hit.face.normal
         .clone()
         .transformDirection(hit.object.matrixWorld);
@@ -197,46 +183,71 @@ export class LabController {
     )[0];
     return hit?.object.userData.instrument ?? null;
   }
-  contact(detail){
-    const hit=this.pick(detail);
-    if(detail.source!=='webcam' || this.tool!=='scalpel' || this.cutOpen)return hit;
-    const width=this.bench.host.clientWidth,height=this.bench.host.clientHeight;
-    let nearest=null,best=32;
-    this.onion.guidePoints.forEach(point=>{
-      const p=this.project(point),distance=Math.hypot((p.x-detail.x)*width,(p.y-detail.y)*height);
-      if(distance<best){best=distance;nearest=point;}
+  // Webcam cursors are imprecise, so a scalpel near the seam snaps onto it.
+  contact(detail) {
+    const hit = this.pick(detail);
+    if (detail.source !== "webcam" || this.tool !== "scalpel" || this.cutOpen)
+      return hit;
+    const width = this.bench.host.clientWidth,
+      height = this.bench.host.clientHeight;
+    let nearest = null,
+      best = 32;
+    this.specimen.guidePoints.forEach((point) => {
+      const p = this.project(point),
+        distance = Math.hypot((p.x - detail.x) * width, (p.y - detail.y) * height);
+      if (distance < best) {
+        best = distance;
+        nearest = point;
+      }
     });
-    if(nearest){
-      const normal=nearest.clone().sub(this.onion.origin).normalize();
-      return {point:nearest.clone(),normal,part:this.onion.parts.get('section'),assisted:true};
-    }
-    return hit;
+    if (!nearest) return hit;
+    return {
+      point: nearest.clone(),
+      normal: nearest.clone().sub(this.specimen.origin).normalize(),
+      part: this.specimen.parts.get(this.specimen.openingPartId),
+      assisted: true,
+    };
   }
-  grabContact(detail){
-    const hit=this.pick(detail);
-    if(detail.source!=='webcam'){
-      // The pulsing ring is itself a grab target, even if the membrane is hidden
-      // under its layer or the ray lands on something behind it.
-      if(this.epidermisReady&&this.available().some(p=>p.id==='epidermis')){
-        const part=this.onion.parts.get('epidermis'),point=this.graspPoint(part),p=this.project(point);
-        if(Math.hypot((p.x-detail.x)*this.bench.host.clientWidth,(p.y-detail.y)*this.bench.host.clientHeight)<45)
-          return {part,point,normal:new THREE.Vector3(0,1,0),assisted:true};
+  // Pinches snap to the nearest grasp point; the onion membrane gets priority
+  // because it overlaps its carrier layer.
+  grabContact(detail) {
+    const hit = this.pick(detail),
+      width = this.bench.host.clientWidth,
+      height = this.bench.host.clientHeight;
+    const screen = (point) => {
+      const p = this.project(point);
+      return Math.hypot((p.x - detail.x) * width, (p.y - detail.y) * height);
+    };
+    const contact = (part, point) => ({
+      part,
+      point,
+      normal: new THREE.Vector3(0, 1, 0),
+      assisted: true,
+    });
+    if (detail.source !== "webcam") {
+      // The pulsing ring is itself a grab target, even when the membrane is
+      // hidden under its layer or the ray lands on something behind it.
+      if (this.epidermisReady) {
+        const part = this.specimen.parts.get("epidermis"),
+          point = this.graspPoint(part);
+        if (screen(point) < 45) return contact(part, point);
       }
       return hit;
     }
-    let closest=null,best=40;
-    for(const part of this.available()){
-      const point=this.graspPoint(part),p=this.project(point);
-      let distance=Math.hypot((p.x-detail.x)*this.bench.host.clientWidth,(p.y-detail.y)*this.bench.host.clientHeight);
-      // A pinch anywhere near the membrane should catch it, not its carrier layer.
-      if(part.id==='epidermis'&&this.epidermisReady)distance*=.4;
-      if(distance<best){best=distance;closest={part,point,normal:new THREE.Vector3(0,1,0),assisted:true};}
+    let closest = null,
+      best = 40;
+    for (const part of this.available()) {
+      const point = this.graspPoint(part);
+      let distance = screen(point);
+      if (part.id === "epidermis" && this.epidermisReady) distance *= 0.4;
+      if (distance < best) {
+        best = distance;
+        closest = contact(part, point);
+      }
     }
-    return closest||hit;
+    return closest || hit;
   }
   move(detail) {
-    this.lastInput=detail;
-    if(this.gesturePinchHeld && !this.held && this.cutOpen)this.beginGrab(detail);
     if (this.held) {
       this.drag(detail);
       return;
@@ -290,7 +301,7 @@ export class LabController {
     }
     let best = Infinity,
       index = 0;
-    this.onion.guidePoints.forEach((point, i) => {
+    this.specimen.guidePoints.forEach((point, i) => {
       const d = point.distanceToSquared(hit.point);
       if (d < best) {
         best = d;
@@ -300,7 +311,7 @@ export class LabController {
     const valid = best < 0.0042 * 0.0042;
     if (this.coverage.add(index / 96, valid)) {
       this.cutDirty = true;
-      this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen });
+      this.specimen.updateCut(this.coverage.bins, { complete: this.cutOpen });
       this.emit();
     }
     this.bench.toolAt("scalpel", hit.point, hit.normal);
@@ -314,7 +325,7 @@ export class LabController {
     if (this.cutDirty) this.history.push(this.operationBefore);
     this.emit(
       this.cutOpen
-        ? "Incision complete. Use forceps to lift the cut section."
+        ? `Incision complete. Use forceps to lift the ${this.specimen.parts.get(this.specimen.openingPartId).label.toLowerCase()}.`
         : this.cutDirty
           ? `${Math.round(this.coverage.fraction * 100)}% of the seam cut. Continue where you left off.`
           : "No cut made. Turn on hints to see the supported incision.",
@@ -337,7 +348,7 @@ export class LabController {
           return;
         }
         for (let n = 0; n < 3 && i <= 96; n++, i++) {
-          const point = this.onion.guidePoints[i];
+          const point = this.specimen.guidePoints[i];
           this.coverage.add(i / 96);
           this.cutDirty = true;
           this.bench.toolAt(
@@ -346,7 +357,7 @@ export class LabController {
             new THREE.Vector3(0, 0.35, 1).normalize(),
           );
         }
-        this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen });
+        this.specimen.updateCut(this.coverage.bins, { complete: this.cutOpen });
         this.emit();
         if (i <= 96 && !this.coverage.complete) requestAnimationFrame(next);
         else {
@@ -368,20 +379,7 @@ export class LabController {
         )
         .applyMatrix4(part.group.matrixWorld);
     }
-    if (part.id === "section") {
-      return new THREE.Vector3(0.017, 0.059, 0.019).applyMatrix4(
-        part.group.matrixWorld,
-      );
-    }
-    const mesh = part.meshes[0],
-      p = mesh.geometry.attributes.position;
-    const index =
-      part.id === "epidermis"
-        ? 10 * 15 + 7 // centre of the 15×21 membrane grid: easiest to see and reach
-        : Math.min(p.count - 1, Math.floor(42 * 0.74) * 49 + 48);
-    return new THREE.Vector3()
-      .fromBufferAttribute(p, index)
-      .applyMatrix4(mesh.matrixWorld);
+    return this.specimen.graspPoint(part);
   }
   beginGrab(detail, forcedId = null) {
     if (this.held || this.autoCut) return;
@@ -392,7 +390,11 @@ export class LabController {
     let hit = forcedId ? null : this.grabContact(detail),
       id = forcedId ?? hit?.part.id;
     // While the membrane is still attached, grabbing its carrier peels the membrane.
-    if (!forcedId && this.epidermisReady && (id === "layer-1" || id === "epidermis")) {
+    if (
+      !forcedId &&
+      this.epidermisReady &&
+      (id === "layer-1" || id === "epidermis")
+    ) {
       id = "epidermis";
       hit = null;
     }
@@ -400,8 +402,8 @@ export class LabController {
     if (!part) {
       this.emit(
         this.sectionMoved
-          ? "Grasp an exposed outer edge with the forceps."
-          : "Lift the cut section to expose the layers beneath it.",
+          ? "Grasp an exposed piece with the forceps."
+          : "Lift the opened panel or section to expose the tissue beneath it.",
       );
       return;
     }
@@ -410,32 +412,17 @@ export class LabController {
     this.settling.delete(id);
     let vertex;
     let point = hit?.point ?? this.graspPoint(part);
-    if (
-      hit &&
-      !this.states[id].detached &&
-      id !== "section" &&
-      id !== "epidermis"
-    ) {
-      const p = part.meshes[0].geometry.attributes.position;
-      let best = Infinity;
-      for (let row = 5; row <= 41; row++)
-        for (const col of [0, 48]) {
-          const index = row * 49 + col,
-            v = new THREE.Vector3()
-              .fromBufferAttribute(p, index)
-              .applyMatrix4(part.group.matrixWorld),
-            distance = v.distanceTo(hit.point);
-          if (distance < best) {
-            best = distance;
-            vertex = index;
-            point = v;
-          }
-        }
-      if (best > 0.018) {
+    if (hit && !this.states[id].detached && part.interaction === "peel") {
+      const edge = this.specimen.graspEdge?.(part, hit.point);
+      if (edge === null) {
         this.emit(
           "Grasp the exposed edge of this layer. Hints mark a starting point.",
         );
         return;
+      }
+      if (edge) {
+        vertex = edge.vertex;
+        point = edge.point;
       }
     }
     const normal = this.bench.camera.getWorldDirection(new THREE.Vector3());
@@ -451,11 +438,10 @@ export class LabController {
       axis: null,
       startBend: this.states[id].bend,
       keyboard: Boolean(forcedId),
-      inputHeight: Number.isFinite(detail?.z)?detail.z:.5,
     };
     this.bench.controls.enabled = false;
     this.bench.host.classList.add("is-holding");
-    if (id === "section" || this.states[id].detached) {
+    if (part.interaction === "lift" || this.states[id].detached) {
       this.states[id].detached = true;
       this.physics.hold(part);
     }
@@ -472,7 +458,6 @@ export class LabController {
     if (!held || !this.pointerRay(detail)) return;
     const target = new THREE.Vector3();
     if (!this.raycaster.ray.intersectPlane(held.plane, target)) return;
-    if(detail.source==='webcam' && Number.isFinite(detail.z))target.y+=(detail.z-held.inputHeight)*.16;
     const state = this.states[held.id];
     if (state.detached) {
       this.moveHeldTo(target.sub(held.offset));
@@ -501,7 +486,7 @@ export class LabController {
     state.bend = bend;
     state.separation = Math.max(state.separation, bend);
     state.direction = direction.toArray();
-    this.onion.deform(part, bend, direction);
+    this.specimen.deform(part, bend, direction);
     const point = this.graspPoint(part);
     this.bench.toolAt(
       "hand",
@@ -512,7 +497,7 @@ export class LabController {
     if (state.separation >= 0.985 && !state.detached) {
       state.detached = true;
       state.bend = 1;
-      this.onion.deform(part, 1, direction);
+      this.specimen.deform(part, 1, direction);
       this.physics.createBody(part, true);
       if (this.held) {
         this.held.point.copy(this.graspPoint(part));
@@ -599,10 +584,10 @@ export class LabController {
     this.bench.restTools();
     this.history.push(this.operationBefore);
     if (held.id === "layer-1" && this.epidermisReady) this.selected = "epidermis";
-    else if (held.id === "section" && this.sectionMoved)
+    else if (held.id === this.specimen.openingPartId && this.sectionMoved)
       this.selected =
         this.available().find((p) => !this.states[p.id].detached)?.id ??
-        "section";
+        this.specimen.openingPartId;
     this.emit(
       state.detached
         ? `${held.part.label} placed.`
@@ -675,7 +660,7 @@ export class LabController {
     }
   }
   reset() {
-    this.gesturePinchHeld=false;
+    this.specimen.setAnatomyView?.(false);
     this.restore(this.initial);
     this.history.clear();
     this.hints = false;
@@ -685,50 +670,34 @@ export class LabController {
     this.emit("Bench reset.");
   }
   update(dt) {
-    this.physics.syncSpecimen(this.onion.parts, this.states);
+    this.physics.syncSpecimen(this.specimen, this.states);
     for (const [id, target] of this.settling) {
       const state = this.states[id];
       state.bend = matchMedia("(prefers-reduced-motion: reduce)").matches
         ? target
         : THREE.MathUtils.damp(state.bend, target, 11, dt);
-      this.onion.deform(
-        this.onion.parts.get(id),
+      this.specimen.deform(
+        this.specimen.parts.get(id),
         state.bend,
         new THREE.Vector3(...state.direction),
       );
       if (Math.abs(state.bend - target) < 0.001) this.settling.delete(id);
     }
-    // The epidermis follows its carrier until it is itself peeled free.
-    if (this.states["layer-1"].detached && !this.states.epidermis.detached) {
-      const e = this.onion.parts.get("epidermis"),
-        carrier = this.onion.parts.get("layer-1");
-      e.group.visible = true;
-      if (!this.membraneReady) {
-        this.onion.prepareMembrane(
-          this.states["layer-1"].bend,
-          new THREE.Vector3(...this.states["layer-1"].direction),
-        );
-        this.onion.deform(
-          e,
-          this.states.epidermis.bend,
-          new THREE.Vector3(...this.states.epidermis.direction),
-        );
-        this.membraneReady = true;
-      }
-      e.group.position.copy(carrier.group.position);
-      e.group.quaternion.copy(carrier.group.quaternion);
-    }
-    this.onion.cutLine.visible = !this.sectionMoved;
+    this.specimen.updateAttachments?.(this.states);
+    this.specimen.cutLine.visible = !this.sectionMoved;
     this.seamTime = (this.seamTime ?? 0) + dt;
     // The outline shows while cutting is relevant and lingers through the final flash.
-    this.seamHot = this.onion.updateSeam(
-      dt,
-      !this.sectionMoved &&
-        (this.tool === "scalpel" || this.cutting || this.seamHot ||
-          (this.hints && !this.cutOpen)),
-      this.seamTime,
-    );
-    this.onion.guide.visible =
+    this.seamHot =
+      this.specimen.updateSeam?.(
+        dt,
+        !this.sectionMoved &&
+          (this.tool === "scalpel" ||
+            this.cutting ||
+            this.seamHot ||
+            (this.hints && !this.cutOpen)),
+        this.seamTime,
+      ) ?? false;
+    this.specimen.guide.visible =
       !this.cutOpen &&
       (this.hints ||
         this.cutting ||
@@ -739,9 +708,9 @@ export class LabController {
         this.hover && available.includes(this.hover.part) ? this.hover.part : null,
       part =
         membraneNext && (!hovered || hovered.id === "layer-1")
-          ? this.onion.parts.get("epidermis")
+          ? this.specimen.parts.get("epidermis")
           : hovered ?? available.find((p) => p.id === this.selected);
-    const marker = this.onion.graspMarker;
+    const marker = this.specimen.graspMarker;
     marker.visible =
       this.tool === "hand" &&
       !this.held &&
@@ -752,16 +721,18 @@ export class LabController {
       marker.position.copy(this.graspPoint(part));
       marker.lookAt(this.bench.camera.position);
       // The membrane is hard to spot, so its grip point pulses larger and warmer.
-      const pulse = part.id === "epidermis" ? 1.8 + Math.sin(this.markerTime * 5) * 0.5 : 1;
-      marker.scale.setScalar(pulse);
-      marker.material.color.set(part.id === "epidermis" ? "#ffb347" : "#86c9d8");
+      const epidermis = part.id === "epidermis";
+      marker.scale.setScalar(epidermis ? 1.8 + Math.sin(this.markerTime * 5) * 0.5 : 1);
+      marker.material.color.set(epidermis ? "#ffb347" : "#86c9d8");
     }
     // Tint the membrane itself so it reads against the pale flesh beneath it.
-    const membrane = this.onion.parts.get("epidermis").meshes[0].material;
-    const glow = membraneNext ? 0.22 + Math.sin(this.markerTime * 5) * 0.1 : 0;
-    if (membrane.emissiveIntensity !== glow) {
-      membrane.emissive.set("#ff9a3c");
-      membrane.emissiveIntensity = glow;
+    if (this.specimen.id === "onion") {
+      const membrane = this.specimen.parts.get("epidermis").meshes[0].material;
+      const glow = membraneNext ? 0.22 + Math.sin(this.markerTime * 5) * 0.1 : 0;
+      if (membrane.emissiveIntensity !== glow) {
+        membrane.emissive.set("#ff9a3c");
+        membrane.emissiveIntensity = glow;
+      }
     }
   }
   project(point) {
@@ -772,20 +743,19 @@ export class LabController {
     this.bench.camera.updateMatrixWorld(true);
     return {
       state: this.getState(),
-      seam: this.onion.guidePoints.map((p) => this.project(p)),
+      contact: this.hover
+        ? { partId: this.hover.part.id, point: this.hover.point.toArray() }
+        : null,
+      seam: this.specimen.guidePoints.map((p) => this.project(p)),
       graspPoints: Object.fromEntries(
         this.available().map((p) => [p.id, this.project(this.graspPoint(p))]),
       ),
       positions: Object.fromEntries(
-        [...this.onion.parts].map(([id, p]) => [
+        [...this.specimen.parts].map(([id, p]) => [
           id,
           p.group.position.toArray(),
         ]),
       ),
-      bounds: Object.fromEntries([...this.onion.parts].map(([id,part])=>{
-        const box=new THREE.Box3().setFromObject(part.group,true);
-        return [id,{min:box.min.toArray(),max:box.max.toArray()}];
-      })),
       drawCalls: this.bench.renderer.info.render.calls,
       triangles: this.bench.renderer.info.render.triangles,
     };

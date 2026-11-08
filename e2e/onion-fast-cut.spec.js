@@ -3,7 +3,7 @@ test.use({deviceScaleFactor:.3});
 const debug=page=>page.evaluate(()=>window.__scalpless.getDebug());
 // A quick flick delivers few pointer events; each sample jumps ~12 seam bins.
 test('a fast, sparse scalpel stroke still cuts the whole traced span',async({page})=>{
-  await page.goto('/');
+  await page.goto('/lab.html');
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
   await page.keyboard.press('s');
   const {seam}=await debug(page),size=page.viewportSize();
@@ -15,7 +15,7 @@ test('a fast, sparse scalpel stroke still cuts the whole traced span',async({pag
   expect((await debug(page)).state.cut).toBeGreaterThan(.85);
 });
 test('a fast stroke across the seam only cuts where it crosses',async({page})=>{
-  await page.goto('/');
+  await page.goto('/lab.html');
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
   await page.keyboard.press('s');
   const {seam}=await debug(page),size=page.viewportSize(),mid=seam[48];

@@ -58,7 +58,7 @@ export function createLabEnvironment(scene) {
   scene.add(shadow);
 
   const white = new THREE.MeshPhysicalMaterial({
-    color: "#dceaff",
+    color: "#eff6ff",
     roughness: 0.12,
     metalness: 0.06,
     clearcoat: 1,

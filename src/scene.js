@@ -6,7 +6,7 @@ import { createRenderPipeline } from "./render-pipeline.js";
 import { createContactShadows } from "./contact-shadows.js";
 import { createLabEnvironment } from "./lab-environment.js";
 
-export async function createBench(host) {
+export async function createBench(host, view = {}) {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
@@ -40,8 +40,10 @@ export async function createBench(host) {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.ROTATE,
   };
-  const homePosition = new THREE.Vector3(0.18, 0.22, 0.35),
-    homeTarget = new THREE.Vector3(-0.078, 0.057, -0.012);
+  const homePosition = new THREE.Vector3(
+      ...(view.position ?? [0.18, 0.213, 0.35]),
+    ),
+    homeTarget = new THREE.Vector3(...(view.target ?? [-0.078, 0.05, -0.012]));
   function home() {
     const mobile = host.clientWidth < 650;
     controls.target.copy(homeTarget);
@@ -281,7 +283,25 @@ export async function createBench(host) {
   return {
     scene,
     render,
-    setSpecimen: contactShadows.setSpecimen,
+    setSpecimen(specimen) {
+      contactShadows.setSpecimen(specimen);
+      const frog = specimen.id === "frog";
+      pipeline.setTissueOcclusion(frog);
+      // Neutral tissue illumination within the blue lab. This changes only the
+      // frog bench's lighting, never home/orbit/zoom or the onion's appearance.
+      scene.environmentIntensity = frog ? .68 : .5;
+      key.color.set(frog ? "#fff4eb" : "#f7faff");
+      key.intensity = frog ? 2.35 : 3;
+      rim.intensity = frog ? .58 : 1.4;
+      fill.intensity = frog ? .22 : .15;
+      key.shadow.radius = frog ? 3 : 6;
+      key.shadow.intensity = frog ? .75 : .6;
+      renderer.transmissionResolutionScale = frog ? .5 : 1;
+      // Keep transmission, contact occlusion and antialiasing within the laptop
+      // frame budget on Retina displays; CSS layout and camera stay identical.
+      renderer.setPixelRatio(Math.min(devicePixelRatio, frog ? 1.1 : 1.5));
+      resize();
+    },
     camera,
     renderer,
     controls,

@@ -1,6 +1,8 @@
 # Virtual hand tracking
 
-Run `npm start` and open http://localhost:3000. Click **Start camera** and allow webcam access. No package installation is required. Internet access is needed for MediaPipe, Three.js, and fonts. Use a current Chrome or Edge with WebGL enabled.
+This document describes the retained practice sandbox. For webcam control of the onion bench, see [README.md](README.md#webcam-hand-controls).
+
+Run `npm run gesture:sandbox` and open http://localhost:3000. Click **Start camera** and allow webcam access. No package installation is required. Internet access is needed for MediaPipe, Three.js, and fonts. Use a current Chrome or Edge with WebGL enabled.
 
 ## Grab-and-cut sandbox
 
@@ -14,7 +16,7 @@ Click **Use webcam pinch** or **Start camera** to use your virtual hand. Touch t
 
 `sandbox-state.js` implements reach checks, grab offsets, tray drops, contact-only cutting, guide coverage, teleport rejection, and reset independently of Three.js. `sandbox.js` renders the objects and consumes the input contract. `mouse-input.js` maps pointer movement and height to a 3D plane through the viewing camera.
 
-Run `npm test` for unit/integration checks. Run `npm run test:browser` for the rendered mouse workflow in installed Microsoft Edge (override `PLAYWRIGHT_CHANNEL` to use another installed supported channel). Browser tests load the actual hand assets and Three.js locally, then grab, lift, place, cut, and reset through pointer/keyboard input. A screenshot is saved under ignored `test-results/`. Webcam recognition still requires hands-on testing.
+Run `npm test` for unit/integration checks. Run `npm run test:sandbox` for the rendered mouse workflow in installed Google Chrome (override `PLAYWRIGHT_CHANNEL` to use another installed supported channel). Browser tests load the actual hand assets and Three.js locally, then grab, lift, place, cut, and reset through pointer/keyboard input. A screenshot is saved under ignored `test-results/`. Webcam recognition still requires hands-on testing.
 
 ## Camera lying flat (default)
 

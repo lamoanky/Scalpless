@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e7f0ff" />
+    <meta
+      name="description"
+      content="Scalpless. A hands-on virtual dissection bench."
+    />
+    <title>Scalpless — Dissection bench</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip-link" href="#tools" aria-label="Skip to dissection tools"
+      ><svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14m-6-6 6 6-6 6" /></svg
+    ></a>
+    <main
+      id="bench"
+      class="bench"
+      aria-label="Interactive onion dissection bench"
+    >
+      <div
+        id="scene"
+        class="scene"
+        tabindex="0"
+        role="application"
+        aria-label="3D dissection bench. V to inspect, S for scalpel, H for forceps. Right drag or arrow keys to orbit. Plus and minus to zoom."
+      ></div>
+      <div class="context-controls" id="context-controls" hidden>
+        <button
+          id="piece-menu"
+          class="icon-button"
+          type="button"
+          aria-label="Choose tissue"
+          aria-expanded="false"
+          aria-controls="piece-picker"
+        ></button>
+        <select
+          id="piece-select"
+          tabindex="-1"
+          aria-hidden="true"
+          class="sr-only"
+          aria-label="Selected tissue"
+        ></select>
+        <button
+          id="primary-action"
+          class="icon-button"
+          type="button"
+          aria-label="Lift section"
+        ></button>
+        <button
+          id="place-action"
+          class="icon-button"
+          type="button"
+          aria-label="Place on bench"
+          hidden
+        ></button>
+        <button
+          id="microscope-action"
+          class="icon-button"
+          type="button"
+          aria-label="Inspect under microscope (M)"
+          hidden
+        ></button>
+        <div
+          id="piece-picker"
+          class="piece-picker"
+          role="group"
+          aria-label="Available tissue"
+          hidden
+        ></div>
+      </div>
+      <div
+        class="manipulation-pad"
+        id="manipulation-pad"
+        aria-label="Move held tissue"
+        hidden
+      ></div>
+      <footer class="controls-area">
+        <div
+          id="cut-progress"
+          class="cut-progress"
+          role="progressbar"
+          aria-label="Incision coverage"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          hidden
+        >
+          <i id="cut-progress-fill"></i>
+          <output id="cut-percentage" class="sr-only"></output>
+        </div>
+        <nav class="tool-strip" id="tools" aria-label="Dissection tools"></nav>
+      </footer>
+      <p id="tool-hint" class="sr-only"></p>
+      <div id="status" class="sr-only" role="status" aria-live="polite"></div>
+      <div
+        class="loading"
+        id="loading"
+        role="status"
+        aria-label="Preparing the bench"
+      >
+        <span class="loading-orbit" aria-hidden="true"></span>
+      </div>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
