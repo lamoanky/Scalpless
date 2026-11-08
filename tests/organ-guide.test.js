@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { heldOrgan, studyOrgan, teachingContext, ORGAN_GUIDE } from "../src/organ-guide.js";
+import { heldOrgan, studyOrgan, studyHistory, teachingContext, ORGAN_GUIDE } from "../src/organ-guide.js";
 
 test("only a held detached frog organ opens the study", () => {
   const state = {specimen:"frog", held:"heart", pieces:{heart:{detached:true}}};
@@ -18,11 +18,23 @@ test("teaching context is a coarse allowlist, never a debug or camera dump", () 
     pieces:{liver:{detached:true,position:[1,2,3]},abdomen:{detached:true},body:{detached:false}},
     available:[{id:"stomach",label:"untrusted label"}],landmarks:["private"],apiKey:"private",url:"private"};
   const before = structuredClone(state);
-  assert.deepEqual(teachingContext(state),{specimen:"frog",tool:"hand",incision:"open",held:"Liver",selected:"Liver",
+  assert.deepEqual(teachingContext(state),{specimen:"frog",tool:"hand",incision:"open",held:"Liver",selected:"Liver",study:null,
     removed:["Liver","Abdominal panel"],available:["Stomach"]});
   assert.deepEqual(state,before);
   assert.equal(teachingContext({...state,cutOpen:false,cut:.4}).incision,"partial");
   assert.equal(teachingContext({...state,cutOpen:false,cut:0}).incision,"intact");
+});
+
+test("study history preserves collection order and prunes undo/reset without changing the lab",()=>{
+  const state={specimen:"frog",held:"heart",pieces:{heart:{detached:true},liver:{collected:true,detached:true},stomach:{detached:false}}};
+  const before=structuredClone(state);
+  assert.deepEqual(studyHistory(state,["liver"]),["liver","heart"]);
+  assert.deepEqual(studyHistory({...state,held:null},["liver","heart"]),["liver"]);
+  assert.deepEqual(studyHistory({...state,held:null,pieces:{}},["liver","heart"]),[]);
+  assert.deepEqual(studyHistory({...state,specimen:"onion"},["liver"]),[]);
+  assert.equal(teachingContext(state,"liver").study,"Liver");
+  assert.equal(teachingContext(state,"liver").held,"Heart");
+  assert.deepEqual(state,before);
 });
 
 test("study follows the held organ, then the last completed collection", () => {

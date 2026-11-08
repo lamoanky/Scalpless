@@ -1,34 +1,32 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createTeachingSession } from "../src/teaching-session.js";
-import { DEFAULT_MODEL, generateAnswer, generationRequest, sanitizeContext, sanitizeHistory } from "../src/teaching-request.js";
+import { generateAnswer, generationRequest, sanitizeContext, sanitizeHistory } from "../src/teaching-request.js";
 const key="test-session-token-do-not-use";
 const response=text=>new Response(JSON.stringify({candidates:[{finishReason:"STOP",content:{parts:[{text}]}}]}));
 
-test("missing key and connection changes never make requests",async()=>{
-  let calls=0;const session=createTeachingSession({fetchImpl:async()=>{calls++;return response("hi");}});
-  await assert.rejects(session.ask({question:"What is the liver?"}),{code:"no-key"});
-  session.configure({mode:"browser",key});assert.equal(calls,0);
-  assert.deepEqual(session.status(),{mode:"browser",model:DEFAULT_MODEL,configured:true});
-  session.forget();await assert.rejects(session.ask({question:"What is the liver?"}),{code:"no-key"});
+test("creating a server session, cancelling and empty questions never make requests",async()=>{
+  let calls=0;const session=createTeachingSession({fetchImpl:async()=>{calls++;return new Response('{"answer":"hi"}');}});
+  session.cancel();
+  await assert.rejects(session.ask({question:" "}),{code:"empty"});
   assert.equal(calls,0);
 });
 
 test("key travels only in Google's header; prompts and answers are redacted",async()=>{
-  let call;const session=createTeachingSession({fetchImpl:async(url,options)=>{call={url,options};return response(`Answer ${key}`);}});
-  session.configure({mode:"browser",key});
-  assert.equal(await session.ask({question:`What is ${key}?`}),"Answer [credential removed]");
+  let call;
+  assert.equal(await generateAnswer({apiKey:key,question:`What is ${key}?`,fetchImpl:async(url,options)=>{call={url,options};return response(`Answer ${key}`);}}),"Answer [credential removed]");
   assert(!call.url.includes(key));assert.equal(call.options.headers["x-goog-api-key"],key);
   assert(!call.options.body.includes(key));assert.equal(call.options.credentials,"omit");
   assert.equal(call.options.referrerPolicy,"no-referrer");
 });
 
-test("server connection sends no browser key or provider settings",async()=>{
+test("questions automatically use the same-origin server without keys or provider settings",async()=>{
   let call;const session=createTeachingSession({fetchImpl:async(url,options)=>{call={url,options};return new Response(JSON.stringify({answer:"The liver makes bile."}));}});
-  session.configure({mode:"browser",key});session.configure({mode:"server",key,model:"invalid / browser model"});
-  assert.equal(await session.ask({question:"What does the liver do?",context:null}),"The liver makes bile.");
+  assert.equal(await session.ask({question:"What does the liver do?",context:null,apiKey:key,model:"ignored"}),"The liver makes bile.");
   assert.equal(call.url,"/api/tutor");assert(!JSON.stringify(call).includes(key));
   assert.deepEqual(Object.keys(JSON.parse(call.options.body)),["question","history","context"]);
+  assert.deepEqual(call.options.headers,{"Content-Type":"application/json"});
+  assert.equal(call.options.credentials,"same-origin");
 });
 
 test("context and history cannot smuggle system roles or arbitrary data",()=>{
@@ -51,18 +49,23 @@ test("provider failures are useful and never echo provider payloads",async()=>{
 
 test("timeout and explicit cancellation clear the pending session",async()=>{
   const wait=async(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener("abort",()=>reject(new Error("aborted"))));
-  const timed=createTeachingSession({fetchImpl:wait,timeoutMs:5});timed.configure({key});
+  const timed=createTeachingSession({fetchImpl:wait,timeoutMs:5});
   await assert.rejects(timed.ask({question:"Help"}),{code:"timeout"});
-  const cancelled=createTeachingSession({fetchImpl:wait});cancelled.configure({key});
+  const cancelled=createTeachingSession({fetchImpl:wait});
   const pending=cancelled.ask({question:"Help"});
   await assert.rejects(cancelled.ask({question:"Again"}),{code:"busy"});
-  cancelled.forget();await assert.rejects(pending,{code:"cancelled"});
-  assert.equal(cancelled.status().configured,false);
+  cancelled.cancel();await assert.rejects(pending,{code:"cancelled"});
+  const retry=cancelled.ask({question:"Retry"});cancelled.cancel();
+  await assert.rejects(retry,{code:"cancelled"});
 });
 
 test("unconfigured, malformed and rate-limited server replies fail gracefully",async()=>{
   for(const [status,code] of [[503,"no-server"],[429,"quota"],[500,"server"]]) {
-    const session=createTeachingSession({fetchImpl:async()=>new Response("",{status})});session.configure({mode:"server"});
+    const session=createTeachingSession({fetchImpl:async()=>new Response(key,{status})});
     await assert.rejects(session.ask({question:"Help"}),{code});
+  }
+  for(const body of [null,{}, {answer:" "}]) {
+    const session=createTeachingSession({fetchImpl:async()=>new Response(JSON.stringify(body))});
+    await assert.rejects(session.ask({question:"Help"}),{code:"response"});
   }
 });

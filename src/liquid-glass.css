@@ -48,10 +48,11 @@
 .specimen-switcher a { color:#294c6c; }
 .organ-slide { border-radius:28px; }
 .organ-slide .slide-heading,.organ-slide .slide-copy { background:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
-#bench .organ-slide { width:340px; font-family:Orbitron,Inter,sans-serif; text-transform:uppercase; }
+#bench .organ-slide { width:340px; }
+#bench .organ-slide, #bench .teaching-panel { font-family:Orbitron,Inter,sans-serif; text-transform:uppercase; }
 .organ-slide .slide-heading { padding:16px 10px 14px 20px; }
-.organ-slide .slide-heading h2 { font-size:24px; font-weight:650; letter-spacing:.15em; margin-top:7px; line-height:1.35; }
-.organ-slide .panel-eyebrow { font-size:10px; font-weight:750; letter-spacing:.19em; color:#43647e; }
+.organ-slide .slide-heading h2, .teaching-panel .teaching-heading h2 { font-size:24px; font-weight:650; letter-spacing:.15em; margin-top:7px; line-height:1.35; }
+.organ-slide .panel-eyebrow, .teaching-panel .panel-eyebrow { font-size:10px; font-weight:750; letter-spacing:.19em; color:#43647e; }
 .organ-slide .slide-preview { height:158px; margin:0 18px; }
 .organ-slide .slide-etch { inset:0; border:0; }
 .slide-etch svg { position:absolute; width:100%; height:100%; overflow:visible; }
@@ -64,12 +65,19 @@
 .organ-slide .slide-observe { display:none; }
 .organ-slide .slide-note { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); padding:0; border:0; }
 #bench .teaching-panel { border-radius:26px; }
+.teaching-panel .teaching-heading > div { min-width:0; }
+.teaching-panel .teaching-heading .icon-button { flex-shrink:0; }
+.teaching-panel .teaching-intro, .teaching-panel .teaching-message { font-size:10.5px; font-weight:650; line-height:1.95; letter-spacing:.09em; }
+.teaching-panel button, .teaching-panel textarea { font-family:inherit; text-transform:inherit; font-weight:650; letter-spacing:.06em; }
+.teaching-panel .question-idea { font-size:10px; line-height:1.7; }
+.teaching-panel .question-entry textarea { font-size:11px; line-height:1.8; }
+.teaching-panel .message-label { font-weight:750; letter-spacing:.15em; }
+.teaching-panel .context-sharing, .teaching-panel .teaching-status { font-weight:600; letter-spacing:.045em; line-height:1.7; }
 .teaching-panel .teaching-composer { background:#ffffff25; }
 .teaching-panel .teaching-message { background:#ffffff58; border-color:#ffffff85; }
 .teaching-panel .teaching-message.user { background:#e9f7ff66; }
 .teaching-panel .question-idea,.teaching-panel .panel-button.quiet { background:#ffffff50; }
-.teaching-panel .question-entry,.teaching-panel .teaching-connect input,
-.teaching-panel .teaching-connect select { background:#ffffffb5; }
+.teaching-panel .question-entry { background:#ffffffb5; }
 @media(max-width:1100px) {
   #bench .organ-slide { width:304px; }
   .organ-slide .slide-preview { height:144px; }
@@ -84,10 +92,45 @@
   .organ-slide .slide-system { font-size:10px; letter-spacing:.06em; }
 }
 @media(max-width:560px) {
+  .teaching-panel .teaching-heading h2 { font-size:18px; }
+  .teaching-panel .panel-eyebrow { font-size:8px; }
+  .teaching-panel .teaching-intro, .teaching-panel .teaching-message { font-size:10px; letter-spacing:.025em; line-height:1.7; }
   .tool-strip { gap:8px; padding:0; }
   .tool-group { padding:5px; gap:3px; }
 }
 @media(max-height:600px) {
   #bench .organ-slide { max-height:calc(100dvh - 96px); overflow:auto; }
   .organ-slide .slide-preview { height:100px; }
+}
+
+/* Organ labels form a native scroll-snap history; the 3D view stays independent. */
+#bench .organ-slide { display:block; }
+.organ-slide .slide-heading { padding:8px 8px 4px 16px; gap:4px; }
+.organ-slide .slide-heading > .icon-button { flex-shrink:0; }
+.study-history { display:flex; flex:1; min-width:0; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior:contain; }
+.study-history::-webkit-scrollbar { display:none; }
+.study-label { flex:0 0 100%; min-width:0; min-height:48px; padding:6px 0; background:transparent; color:inherit; scroll-snap-align:start; font:650 20px/1.35 Orbitron,Inter,sans-serif; letter-spacing:.1em; text-transform:uppercase; text-align:left; }
+.organ-slide .slide-preview { margin:0 16px 12px; height:150px; min-height:0; }
+.study-navigation { display:flex; justify-content:space-between; padding:0 12px 6px; }
+#bench.has-teaching-chat .organ-slide { right:380px; width:280px; }
+#bench.has-teaching-chat .study-launch { right:380px; }
+.teaching-panel .teaching-heading { padding:4px 8px 4px 20px; }
+.teaching-panel .teaching-status:empty { display:none; }
+.teaching-panel.has-study .teaching-suggestions { display:none; }
+@media(max-width:760px) {
+  #bench .teaching-panel { top:76px; right:12px; width:calc(100vw - 24px); max-height:calc(100dvh - 292px); }
+  #bench .organ-slide, #bench.has-teaching-chat .organ-slide { top:76px; left:12px; right:12px; width:auto; }
+  .organ-slide .study-label { font-size:18px; }
+  .organ-slide .slide-preview { height:96px; margin:0 12px 8px; }
+  .study-navigation { position:absolute; bottom:8px; left:12px; right:12px; pointer-events:none; }
+  .study-navigation button { pointer-events:auto; background:#ffffff70; }
+  #bench.has-organ-study .teaching-panel { top:calc(88px + var(--study-height, 156px)); max-height:calc(100dvh - 304px - var(--study-height, 156px)); }
+  #bench.has-minimized-study .teaching-panel { top:136px; max-height:calc(100dvh - 352px); }
+  #bench.has-teaching-chat .study-launch { right:12px; }
+  .teaching-panel .teaching-scroll { min-height:32px; }
+  .teaching-panel .teaching-composer { padding:4px 12px; }
+  .teaching-panel .context-sharing { min-height:40px; }
+}
+@media(max-height:600px) and (min-width:761px) {
+  .organ-slide .slide-preview { height:90px; }
 }

@@ -1,9 +1,11 @@
+import { mockTutor } from "./mock-tutor.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 
 const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});
 const page = await browser.newPage({viewport:{width:1440,height:960},deviceScaleFactor:2});
+await mockTutor(page);
 const errors=[];
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error") errors.push(m.text());});

@@ -10,7 +10,9 @@ try {
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true'&&window.__scalplessLanding.getDebug().labReady);
   await page.waitForTimeout(700);
   await page.screenshot({path:'output/frog-landing-desktop.png'});
+  const posterStyle=await page.addStyleTag({content:'.enter-lab,.scroll-cue,.start-dissection,.landing-wordmark,.model-loading,.return-home{visibility:hidden!important}'});
   await page.locator('#lab-frame').screenshot({path:'output/frog-landing-poster-source.png'});
+  await posterStyle.evaluate(element=>element.remove());
   console.log('Captured opening');
   const timing=await page.evaluate(async()=>{
     const distance=document.querySelector('.scroll-story').offsetHeight-innerHeight;
@@ -27,6 +29,7 @@ try {
     return {frames:deltas.length,durationMs:deltas.reduce((a,b)=>a+b,0),averageFps:1000*deltas.length/deltas.reduce((a,b)=>a+b,0)};
   });
   console.log('Recorded rotation',timing);
+  await page.getByRole('button',{name:'Start dissection',exact:true}).click();
   await page.waitForFunction(()=>window.__scalplessLanding.getDebug().entered);
   await page.waitForTimeout(600);await page.screenshot({path:'output/frog-landing-entered.png'});
   const lab=page.frames().find(f=>new URL(f.url()).pathname.endsWith('/lab.html'));

@@ -42,6 +42,8 @@ Scroll through the opening scene, choose the frog icon at the upper left of the 
 
 The custom frog has continuous tapered limbs, webbed feet, gold irises, authored 2K skin/tissue maps and irregular organ lobes. Natural ventral skin is the default; the layers button beside the specimen selector reveals a blue translucent anatomy view. This view does not change dissection progress, and reset restores natural skin. Organs remain pre-separated rigid pieces, and the abdominal panel combines skin and muscle. Connective-tissue cutting and detailed anatomical validation are not included. See [frog model resources and implementation notes](docs/frog-model.md) for the visual reference, supported workflow and import requirements for an exact licensed replacement.
 
+The blue frog now uses exactly the same detailed geometry, UVs, normals, incision, organ positions and collision shapes as the copper frog. Its 2K exterior atlas is a blue recoloring of the same markings; skin grain, moist finish, eyes and internal tissues share the original material settings. `python3 scripts/prepare-blue-frog.py` regenerates that atlas. Both variants use the same lighting. Landing poses blend the shared detailed limbs into a crouch and restore the original lab vertices exactly; the skin coordinates stay fixed to the tissue. Decorative landing studies also come from this specimen definition.
+
 `npm run test:frog` checks the frog workflow; `npm run capture:frog` also records a walkthrough.
 
 ## Guided lesson, microscope and cut feedback (onion)
@@ -88,7 +90,7 @@ The original gesture sandbox is preserved at `npm run gesture:sandbox` → http:
 - `src/landing-scene.js`, `src/landing-frog.js`: shared blue exterior, shoulder/hip posing, glass displays, procedural textures and reflected floor.
 - `src/landing-presentation.js`: validates parent messages, applies scroll presentation and releases input/physics after the final pose. Controller actions and camera controls remain unchanged after entry.
 - `src/organ-slide.js`, `src/organ-guide.js`: independent held/collected-organ study view and concise anatomy/context metadata.
-- `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: optional chat UI, session-only credentials/cancellation and bounded Gemini transport.
+- `src/teaching-chat.js`, `src/teaching-session.js`, `src/teaching-request.js`: chat UI, cancellable same-origin requests and bounded Gemini transport.
 - `server/tutor.mjs`: optional loopback teaching proxy; no client credentials or camera data are accepted.
 
 The specimen stays stationary during cutting. Attached tissue is deformed around its basal attachment with bounded displacement; separation progress is stored separately from its current bend. A detached shell retains its shape and becomes a rigid body. Collision geometry approximates its volume using smaller convex patches to preserve concavity. Held pieces follow constrained targets; release transfers them back to simulation with restrained motion.
@@ -97,9 +99,11 @@ The original supplied design is preserved in `design/reference.png`. Runtime geo
 
 ## Organ study slides
 
-Picking up a detached frog heart, liver, lung, stomach or intestine opens a small glass study slide. It shows the actual organ geometry, its name, function and an observation prompt. Drag the study view or focus it and use the arrow keys to rotate the study; Home restores its angle. This is a gross-anatomy 3D view, not microscopic tissue imagery.
+Picking up a detached frog heart, liver, lung, stomach or intestine opens a small glass study slide. It shows only the organ label and actual 3D geometry. The teaching chat opens alongside it and begins explaining the organ automatically. Drag the study view or focus it and use the arrow keys to rotate the study; Home restores its angle. This is a gross-anatomy 3D view, not microscopic tissue imagery.
 
-The live organ stays in your forceps until you drop it or use Place on bench. Releasing an organ removes it from the bench, picking and physics, while its information and rotatable study stay open. Picking up another organ updates the slide. The abdominal panel and onion tissue still settle physically on the bench.
+The live organ stays in your forceps until you drop it or use Place on bench. Releasing an organ removes it from the bench, picking and physics, while its rotatable study and chat stay open. Picking up another organ adds it to the study history. The abdominal panel and onion tissue still settle physically on the bench.
+
+Scroll over the organ panel, swipe its label horizontally, or use its previous/next arrows to revisit earlier organs. Page Up/Down also browses history; arrow keys on the label browse, while arrow keys on the preview rotate. Browsing never changes the specimen or physics. Undo/cancel remove invalid history entries; reset clears the history. Previously shown explanations are reused in this tab.
 
 The slide is a read-only clone rendered through the existing WebGL renderer; it is never added to Rapier or the picking hierarchy. Undo restores the removed organ and the previous study; cancelling a new grab also restores the previous study. Reset returns every organ and clears the slide. Minimize it with its close button and reopen it with the slide icon, including after release. Opening the study never steals focus during a drag.
 
@@ -107,7 +111,9 @@ The four-arrow button beside the tissue actions expands native movement controls
 
 ### Clear liquid-glass interface
 
-The toolbar, specimen controls and panels use the original shader from [dashersw/liquid-glass-js](https://github.com/dashersw/liquid-glass-js), pinned to revision `78cb6ccb0b9987bb60a88b14ccbd13a9e6e8ab2a`. Its fragment shader is extracted unchanged from the vendored source. Clear neutral tint, rounded/pill surfaces and live refraction replace the opaque blue treatment. The organ study retains the reference's spaced, uppercase Orbitron lettering, bundled locally with its font license.
+The toolbar, specimen controls and panels use the original shader from [dashersw/liquid-glass-js](https://github.com/dashersw/liquid-glass-js), pinned to revision `78cb6ccb0b9987bb60a88b14ccbd13a9e6e8ab2a`. Its fragment shader is extracted unchanged from the vendored source. Clear neutral tint, rounded/pill surfaces and live refraction replace the opaque blue treatment. The organ study and teaching chat share the reference's spaced, uppercase Orbitron lettering, bundled locally with its font license.
+
+The chat adds the supplied reference's luminous blue glass rim, inset composer, glossy checkbox and circular send control. Its single rounded question selector expands into a keyboard-accessible list; selecting a prompt fills the composer without sending it. Native checkbox behavior, focus indicators, server requests and automatic organ explanations are preserved. Short layouts scroll the conversation/composer inside a fixed glass frame.
 
 An adapter feeds only the rendered lab scene into the shader using the existing Three.js renderer. It does not snapshot the page, camera preview or API-key fields. The glass uses CSS-resolution targets, matching the library's canvas density; the specimen, native UI text and organ study keep full display resolution. There is no additional WebGL context or animation loop. Native buttons, focus, shortcuts, input ownership and dissection state stay in their existing modules. The upstream MIT license is included with the source and in the built site's `licenses/` directory.
 
@@ -117,27 +123,21 @@ The descriptions are concise classroom summaries, checked against the [NWTC frog
 
 Use the speech-bubble button at the upper right. Ask a question and press **Send** (or Enter; Shift+Enter adds a line). Suggested questions only fill the composer; they do not send a request. The panel can explain anatomy, organ function and the current virtual lab step. It never operates the tools. Its answers are AI-generated and should be checked with a teacher.
 
-No question, lab state or credential is transmitted on startup, opening the panel, or saving connection settings. A request is sent only when you submit a question. The optional **Share current lab state** checkbox includes the specimen, tool, incision stage, held/selected tissue and available/removed part names. It excludes webcam images, landmarks, coordinates and identifying data. Up to six completed exchanges are sent for follow-up context; **Clear** removes the conversation from this tab. Turning off context sharing omits the current state, but previous answers may still mention earlier lab state. Clear the conversation to remove that history too.
+Gemini is instructed to reply in 1–3 short sentences, with at most 45 words, for both questions and automatic organ explanations. This is a model instruction, not a hard truncation of the response.
 
-### Browser connection for personal development
+The chat automatically uses the same-origin server connection; there is no browser key entry or connection menu. No question or lab state is transmitted on startup or opening the chat manually. Opening a new organ study automatically requests its explanation; submitting a question sends a follow-up request. An authored reference explanation appears immediately and remains available if the server is unavailable. Revisiting an organ reuses its displayed explanation instead of repeating the request. Switching studies, closing chat or resetting cancels pending replies so late responses cannot replace the active explanation. The optional **Share current lab state** checkbox includes the specimen, tool, incision stage, held/selected tissue, the organ being reviewed, and available/removed part names. It excludes webcam images, landmarks, coordinates and identifying data. Up to six completed exchanges are sent for follow-up context; the conversation is held only in memory for the current page. Turning off context sharing omits the current state, but previous answers may still mention earlier lab state. Reloading the page starts a fresh conversation and also restarts the lab.
 
-Open **Gemini connection**, enter your own key from [Google AI Studio](https://aistudio.google.com/api-keys), and choose **Use connection**. The key stays in a private JavaScript closure for the lifetime of this page. The password field is cleared after configuration; the key is not put in local/session storage, URLs, debug state, logs or the repository. **Forget key**, reloading, or switching specimen routes removes it. Closing the chat retains it for this page session.
+### Local server setup
 
-**A browser key is exposed to that browser and its developer tools.** When you submit a question, it travels in the `x-goog-api-key` header directly to Google's Gemini endpoint. Do not use a shared project key this way in a public app. Google recommends a backend proxy for production [API key security](https://ai.google.dev/gemini-api/docs/api-key). Restrict your key and check the account's quota and data terms in AI Studio.
+The browser sends only questions/history/coarse context to `/api/tutor`. The Gemini key and model selection stay on the server. No new dependencies are required.
 
-The default text model is `gemini-3.5-flash-lite`, listed in Google's [model catalog](https://ai.google.dev/gemini-api/docs/models) when implemented. You can change the model name in settings if your account uses another supported text model. The adapter uses the documented [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Model availability, quotas and account eligibility can change. No live-provider answer was validated without a real key; automated checks intercept the provider and test the actual request/response boundary.
+1. Create **`.env.local` in the project root**, which Git ignores. Add `GEMINI_API_KEY=your-key` using your editor. Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
+2. Run `npm start` (or `npm run dev` / `npm run preview`). Vite serves `/api/tutor` itself; no second terminal is needed. Restart after changing `.env.local`. (`npm run tutor` still starts the same handler standalone on `127.0.0.1:8787` for other hosts.)
+3. Open an organ study for an automatic explanation, or open the chat and ask a question. No connection selection or key entry is needed in the app.
 
-### Server connection (recommended)
+The default text model is `gemini-3.5-flash-lite`; use `GEMINI_MODEL` on the server if your account requires another supported text model. Model availability, quotas and account eligibility can change. The server uses the [generateContent REST API](https://ai.google.dev/api/generate-content), with classroom-focused system instructions and explicit safety settings. Automated checks use mocked replies, not a live account.
 
-The browser sends only questions/history/coarse context to `/api/tutor`; the server holds the Gemini key. No new dependencies are required.
-
-1. Put your key in **`.env.local` in the project root** (Git ignores it; a template with an empty `GEMINI_API_KEY=` is created locally). Optionally set `GEMINI_MODEL=gemini-3.5-flash-lite`. Never use a `VITE_` prefix for credentials, since Vite exposes those variables in client bundles.
-2. Run `npm start` (or `npm run dev` / `npm run preview`). Vite serves `/api/tutor` itself; no second terminal is needed. Restart after changing `.env.local`.
-3. Open the chat. When the server has a key, the chat connects automatically (`GET /api/tutor/status` reports only whether a key exists) and shows **Connected**. Nothing is sent until you submit a question.
-
-`npm run tutor` still starts the same handler as a standalone loopback service on `127.0.0.1:8787` for other hosts. If a request fails, the dev server logs one line with a coarse code such as `[tutor] Gemini request failed: credentials` (bad key) or `model` (unavailable model).
-
-The tutor route accepts JSON POSTs from localhost/127.0.0.1 ports 3000, 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers; only the coarse failure code above is logged. A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or background requests. **Stop**, closing the panel, changing connection settings and **Clear** cancel a pending request and ignore late replies.
+The tutor route accepts JSON POSTs from localhost/127.0.0.1 ports 3000, 5173 and 4173, limits request size and concurrency, rate-limits submissions, and times out provider calls. It returns fixed error messages and does not log prompts, credentials, provider payloads or answers; the dev server logs only a coarse failure code such as `[tutor] Gemini request failed: credentials` (bad key) or `model` (unavailable model). A missing key returns an unconfigured-service response. No-key, unavailable-network, timeout, blocked-response, model-access and quota states preserve the lab and allow retry; there are no automatic retries or startup requests. **Stop** and closing the panel cancel a pending request and ignore late replies.
 
 For deployment, supply an authenticated same-origin `/api/tutor` route with a server secret manager, per-user authorization/quotas and the appropriate origin policy. Do not publish this loopback development service as an unauthenticated public proxy. The production static build alone cannot provide that route.
 
@@ -162,7 +162,7 @@ Start events select the corresponding tool. Move events update contact or the he
 
 The input/camera adapters, root gesture recognizers, six events and Rapier implementation are unchanged. The controller now collects frog organs on release, including `input:pinchend`; adapters do not need separate collection logic. Tracking-loss release follows the same rule and remains undoable. Continue sending normalized scene coordinates through the existing adapter; do not target the organ study view as a second lab canvas. The study uses the main renderer's scissor/viewport and restores both after drawing. No additional render loop or WebGL context is introduced.
 
-The new panels subscribe to lab state. Chat fields and study rotation consume their own keyboard input so shortcut letters and arrows cannot cut, reset, rotate or move tissue while typing/inspecting a study. The new UI never starts or stops the camera. Only the **setup panel** is closed when switching between camera settings and chat; a running tracking session continues. Existing deliberate scene/tool input still takes ownership through the camera adapter. Panel visibility is coordinated in `main.js` by observing `#hand-tracking-panel`; keep that ID and `#tracking-close` or update the observer if the incoming branch changes its UI.
+The new panels subscribe to lab state. Organ studies and teaching chat remain visible together; camera setup temporarily suspends the study and closes chat. The study opening callback requests teaching through the existing server adapter, without tool actions. Chat fields and study rotation consume their own keyboard input so shortcut letters and arrows cannot cut, reset, rotate or move tissue while typing/inspecting a study. The new UI never starts or stops the camera. Only the **setup panel** is closed when switching between camera settings and chat; a running tracking session continues. Existing deliberate scene/tool input still takes ownership through the camera adapter. Panel visibility is coordinated in `main.js` by observing `#hand-tracking-panel`; keep that ID and `#tracking-close` or update the observer if the incoming branch changes its UI.
 
 Vite adds only an optional `/api/tutor` dev/preview proxy; keep the existing MediaPipe prebundle setting when merging its configuration. No webcam image, landmark or audio is included in teaching requests. The remaining merge checks are a real-person webcam run on both specimen routes and confirming normalized X/Y alignment after viewport/camera changes. Automated tracking checks use simulated camera frames and known landmarks, so they do not establish real-hand accuracy.
 
@@ -176,7 +176,8 @@ npm run build             # production bundle
 npm run test:browser      # browser interaction and accessibility-size checks
 npm run test:study        # independent organ view, undo/reset and narrow layouts
 npm run test:glass        # original glass shader, resize, Retina/mobile and controls
-npm run test:teaching     # mock Gemini replies, no-key/errors, input isolation and mobile
+npm run test:frog-variants # exact blue/copper geometry and collider parity (Vite dev server)
+npm run test:teaching     # mock server replies, typography/errors, input isolation and mobile
 npm run test:landing      # same-mesh handoff, scroll, history and mobile checks
 FROG_APPEARANCE=blue npm run test:frog  # blue specimen contact and organ-removal checks
 npm run test:tracking     # camera lifecycle and gesture-driven onion workflow

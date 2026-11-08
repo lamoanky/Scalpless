@@ -1,13 +1,13 @@
 import { landingFrame } from './landing-motion.js';
 
-// Input is locked while the same specimen is being posed above its bench.
-// Physics resumes only after the presentation root is exactly the identity.
+// Input stays locked during the Blender preview and the button-driven handoff.
+// Physics resumes once the live specimen is at its exact bench transform.
 export async function createLandingPresentation(bench,specimen) {
   const embedded=parent!==window&&new URLSearchParams(location.search).get('embed')==='landing';
   if(!embedded)return {paused:false,locked:false,ready(){},update(){},getDebug:()=>null};
   document.documentElement.classList.add('landing-preview');
   const {createLandingScene}=await import('./landing-scene.js');
-  const stage=createLandingScene(bench,specimen);
+  const stage=await createLandingScene(bench,specimen);
   let frame=landingFrame(0),active=false;
   bench.controls.enabled=false;
   const presentation={
@@ -19,9 +19,9 @@ export async function createLandingPresentation(bench,specimen) {
   addEventListener('message',event=>{
     if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='scalpless:landing-frame')return;
     const nextActive=event.data.active===true;
-    frame=landingFrame(event.data.progress,{still:event.data.still===true});
+    frame=landingFrame(event.data.progress,{still:event.data.still===true,entry:event.data.entryProgress});
     // Entry must always land at the exact final pose, including hash reload.
-    if(nextActive)frame=landingFrame(1);
+    if(nextActive)frame=landingFrame(1,{entry:1});
     if(active!==nextActive){
       if(nextActive){stage.update(frame);stage.finish();bench.controls.update();}
       active=nextActive;presentation.locked=!active;bench.controls.enabled=active;

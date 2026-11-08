@@ -1,3 +1,4 @@
+import { mockTutor } from "./mock-tutor.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile, rename } from "node:fs/promises";
@@ -28,6 +29,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage(),
   errors = [];
+await mockTutor(page);
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());

@@ -20,6 +20,7 @@
     "test:sandbox": "playwright test",
     "test:tracking": "node scripts/check-hand-tracking.mjs",
     "test:frog": "node scripts/check-frog.mjs",
+    "test:frog-variants": "node scripts/check-frog-variants.mjs",
     "test:study": "node scripts/check-organ-study.mjs",
     "test:glass": "node scripts/check-glass-ui.mjs",
     "test:teaching": "node scripts/check-teaching.mjs",

@@ -47,9 +47,19 @@ export function studyOrgan(state) {
     Object.hasOwn(ORGAN_GUIDE, state.lastCollected) ? state.lastCollected : null);
 }
 
+// Presentation history follows controller-owned collections. Undo/cancel/reset
+// prune entries without retaining a second copy of dissection state.
+export function studyHistory(state, previous = []) {
+  if (state.specimen !== "frog") return [];
+  const held = heldOrgan(state);
+  const eligible = id => Object.hasOwn(ORGAN_GUIDE, id) &&
+    (id === held || state.pieces?.[id]?.collected);
+  return [...new Set([...previous, ...Object.keys(state.pieces ?? {}), held])].filter(eligible);
+}
+
 // Only these coarse fields may leave the lab when a question is submitted.
 // No positions, video, landmarks, URLs, identifiers or credentials are included.
-export function teachingContext(state) {
+export function teachingContext(state, study = null) {
   const frog = state.specimen === "frog";
   const name = id => frog ? (ORGAN_GUIDE[id]?.name ?? (id === "abdomen" ? "Abdominal panel" : null))
     : id === "section" ? "Onion section" : id === "epidermis" ? "Epidermis patch"
@@ -58,7 +68,7 @@ export function teachingContext(state) {
     specimen: frog ? "frog" : "onion",
     tool: ["inspect", "scalpel", "hand"].includes(state.tool) ? state.tool : "inspect",
     incision: state.cutOpen ? "open" : state.cut > 0 ? "partial" : "intact",
-    held: name(state.held), selected: name(state.selected),
+    held: name(state.held), selected: name(state.selected), study: name(study),
     removed: Object.entries(state.pieces ?? {}).filter(([, value]) => value.detached)
       .map(([id]) => name(id)).filter(Boolean).slice(0, 16),
     available: (state.available ?? []).map(part => name(part.id)).filter(Boolean).slice(0, 16),
