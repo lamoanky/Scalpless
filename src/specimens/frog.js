@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createSeamGlow } from "../seam-glow.js";
 import { createLandingFrog, prepareBluePose, applyBluePose, BLUE_TO_LAB, BLUE_ANATOMY_SCALE, BLUE_ANATOMY_LIFT } from "../landing-frog.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
@@ -51,7 +52,8 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
       initialPosition: FROG_ORIGIN.clone(),
       layer: null,
       interaction: "lift",
-      collectOnRelease: FROG_ORGANS.includes(id),
+      // Organs stay on the bench where they are dropped.
+      collectOnRelease: false,
       fixed,
       grasp: new THREE.Vector3(...grasp),
       color,
@@ -679,6 +681,7 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
     if (blue) p.y = p.y * BLUE_ANATOMY_SCALE + BLUE_ANATOMY_LIFT;
     return p.add(new THREE.Vector3(0, .00015, 0)).add(FROG_ORIGIN);
   });
+  const seamGlow = createSeamGlow(scene, guidePoints);
   const guide = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(guidePoints),
     new THREE.LineDashedMaterial({
@@ -764,7 +767,10 @@ export async function createFrog(scene, { appearance = "natural" } = {}) {
       [...parts.values()].filter((p) => !states[p.id].detached),
     graspPoint: (p) => p.grasp.clone().applyMatrix4(p.group.matrixWorld),
     deform() {}, // This first frog uses pre-separated rigid organs, not soft tissue tearing.
-    updateCut(bins) {
+    seamGlow: seamGlow.mesh,
+    updateSeam: seamGlow.update,
+    updateCut(bins, options) {
+      seamGlow.setCut(bins, options);
       let count = 0;
       bins.forEach((v, i) => {
         if (v) {

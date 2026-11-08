@@ -763,6 +763,7 @@ export class LabController {
         ? { partId: this.hover.part.id, point: this.hover.point.toArray() }
         : null,
       seam: this.specimen.guidePoints.map((p) => this.project(p)),
+      seamGlowVisible: this.specimen.seamGlow?.visible ?? false,
       graspPoints: Object.fromEntries(
         this.available().map((p) => [p.id, this.project(this.graspPoint(p))]),
       ),

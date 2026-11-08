@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createSeamGlow } from "../seam-glow.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export const ONION_ORIGIN = new THREE.Vector3(-0.078, 0.022, -0.012);
@@ -546,95 +547,8 @@ export async function createOnion(scene) {
   cutLine.geometry.setDrawRange(0, 0);
   scene.add(cutLine);
 
-  // Seam progress outline: a thin tube along the incision. Uncut stretches stay
-  // faint, cut stretches glow, and freshly cut bins flash and swell briefly.
-  const SEAM_RINGS = guidePoints.length, SEAM_SIDES = 6, SEAM_RADIUS = 0.00042;
-  const frames = new THREE.CatmullRomCurve3(guidePoints).computeFrenetFrames(
-    SEAM_RINGS - 1,
-  );
-  const seamPositions = new Float32Array(SEAM_RINGS * SEAM_SIDES * 3),
-    seamColors = new Float32Array(SEAM_RINGS * SEAM_SIDES * 4),
-    seamIndex = [];
-  for (let i = 0; i < SEAM_RINGS - 1; i++)
-    for (let s = 0; s < SEAM_SIDES; s++) {
-      const a = i * SEAM_SIDES + s,
-        b = i * SEAM_SIDES + ((s + 1) % SEAM_SIDES),
-        c = a + SEAM_SIDES,
-        d = b + SEAM_SIDES;
-      seamIndex.push(a, c, b, b, c, d);
-    }
-  const seamGeometry = new THREE.BufferGeometry();
-  seamGeometry.setAttribute(
-    "position",
-    new THREE.BufferAttribute(seamPositions, 3),
-  );
-  seamGeometry.setAttribute("color", new THREE.BufferAttribute(seamColors, 4));
-  seamGeometry.setIndex(seamIndex);
-  const seamGlow = new THREE.Mesh(
-    seamGeometry,
-    new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      toneMapped: false,
-    }),
-  );
-  seamGlow.name = "seam-progress";
-  seamGlow.renderOrder = 6;
-  seamGlow.frustumCulled = false;
-  seamGlow.visible = false;
-  scene.add(seamGlow);
-  const seamCut = new Uint8Array(96),
-    seamHeat = new Float32Array(96);
-  let seamComplete = false;
-  const UNCUT = [0.85, 0.94, 1, 0.2],
-    CUT = [1, 0.8, 0.22, 1],
-    HOT = [1, 0.98, 0.86, 1];
-  function paintSeam(time = 0) {
-    // Sweeping shimmer keeps the remaining path readable without hints.
-    for (let i = 0; i < SEAM_RINGS; i++) {
-      const left = Math.max(0, i - 1),
-        right = Math.min(95, i);
-      const cut = seamComplete || seamCut[left] || seamCut[right];
-      const heat = Math.max(seamHeat[left], seamHeat[right]);
-      const base = cut ? CUT : UNCUT;
-      const shimmer = cut
-        ? 0
-        : 0.18 * Math.max(0, Math.sin(i * 0.22 - time * 4)) ** 6;
-      const scale = 1 + heat * 1.4 + (cut ? 0.9 : 0);
-      const point = guidePoints[i],
-        n = frames.normals[i],
-        b = frames.binormals[i];
-      for (let s = 0; s < SEAM_SIDES; s++) {
-        const angle = (s / SEAM_SIDES) * Math.PI * 2,
-          c = Math.cos(angle) * SEAM_RADIUS * scale,
-          sn = Math.sin(angle) * SEAM_RADIUS * scale,
-          v = i * SEAM_SIDES + s;
-        seamPositions[v * 3] = point.x + n.x * c + b.x * sn;
-        seamPositions[v * 3 + 1] = point.y + n.y * c + b.y * sn;
-        seamPositions[v * 3 + 2] = point.z + n.z * c + b.z * sn;
-        for (let k = 0; k < 4; k++)
-          seamColors[v * 4 + k] =
-            base[k] + (HOT[k] - base[k]) * heat + (k < 3 ? shimmer : shimmer * 2);
-      }
-    }
-    seamGeometry.attributes.position.needsUpdate = true;
-    seamGeometry.attributes.color.needsUpdate = true;
-  }
-  function updateSeam(dt, visible, time) {
-    seamGlow.visible = visible;
-    let hot = false;
-    for (let i = 0; i < 96; i++) {
-      if (seamHeat[i] > 0) {
-        seamHeat[i] = Math.max(0, seamHeat[i] - dt * 2.2);
-        hot = true;
-      }
-    }
-    if (visible) paintSeam(time);
-    return hot;
-  }
-  paintSeam();
+  const seamGlow = createSeamGlow(scene, guidePoints);
+  const updateSeam = seamGlow.update;
 
   const graspMarker = new THREE.Mesh(
     new THREE.TorusGeometry(0.003, 0.00018, 6, 30),
@@ -648,15 +562,8 @@ export async function createOnion(scene) {
   graspMarker.renderOrder = 7;
   graspMarker.visible = false;
   scene.add(graspMarker);
-  function updateCut(bins, { complete = false, flash = true } = {}) {
-    for (let i = 0; i < 96; i++) {
-      if (flash && bins[i] && !seamCut[i]) seamHeat[i] = 1;
-      if (!flash) seamHeat[i] = 0;
-      seamCut[i] = bins[i];
-    }
-    // Completing the incision lights the whole outline at once.
-    if (flash && complete && !seamComplete) seamHeat.fill(1);
-    seamComplete = complete;
+  function updateCut(bins, options) {
+    seamGlow.setCut(bins, options);
     let count = 0;
     bins.forEach((v, i) => {
       if (v) {
@@ -832,7 +739,7 @@ export async function createOnion(scene) {
     roots,
     guide,
     cutLine,
-    seamGlow,
+    seamGlow: seamGlow.mesh,
     graspMarker,
     updateCut,
     updateSeam,
