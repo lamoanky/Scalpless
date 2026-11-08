@@ -128,7 +128,7 @@ export class LabController {
     for (const part of this.onion.parts.values())
       if (this.states[part.id].detached) this.physics.createBody(part);
     this.physics.syncSpecimen(this.onion.parts, this.states);
-    this.onion.updateCut(this.coverage.bins);
+    this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen, flash: false });
     this.bench.controls.enabled = true;
     this.bench.host.classList.remove("is-holding");
     this.bench.restTools();
@@ -225,6 +225,8 @@ export class LabController {
     const hit = this.contact(detail);
     this.hover = hit;
     if (this.cutting) {
+      this.recordCutPath(this.lastCutInput, detail);
+      this.lastCutInput = detail;
       this.recordCut(hit);
       return;
     }
@@ -239,7 +241,28 @@ export class LabController {
     this.cutDirty = false;
     this.coverage.endStroke();
     this.bench.controls.enabled = false;
+    this.lastCutInput = detail;
     this.recordCut(this.contact(detail));
+  }
+  // Fast strokes arrive as sparse pointer events. Walk the screen path between
+  // samples so every pixel the blade crossed is tested against the seam; each
+  // sub-sample is still raycast, so sweeping off the seam does not count.
+  recordCutPath(from, to) {
+    if (!from || !to) return;
+    const width = this.bench.host.clientWidth,
+      height = this.bench.host.clientHeight;
+    const pixels = Math.hypot((to.x - from.x) * width, (to.y - from.y) * height);
+    const steps = Math.min(48, Math.floor(pixels / 6));
+    for (let s = 1; s < steps; s++) {
+      const t = s / steps;
+      this.recordCut(
+        this.contact({
+          ...to,
+          x: from.x + (to.x - from.x) * t,
+          y: from.y + (to.y - from.y) * t,
+        }),
+      );
+    }
   }
   recordCut(hit) {
     if (!hit || this.states[hit.part.id].detached) {
@@ -258,7 +281,7 @@ export class LabController {
     const valid = best < 0.0042 * 0.0042;
     if (this.coverage.add(index / 96, valid)) {
       this.cutDirty = true;
-      this.onion.updateCut(this.coverage.bins);
+      this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen });
       this.emit();
     }
     this.bench.toolAt("scalpel", hit.point, hit.normal);
@@ -266,6 +289,7 @@ export class LabController {
   endCut() {
     if (!this.cutting) return;
     this.cutting = false;
+    this.lastCutInput = null;
     this.coverage.endStroke();
     this.bench.controls.enabled = true;
     if (this.cutDirty) this.history.push(this.operationBefore);
@@ -303,7 +327,7 @@ export class LabController {
             new THREE.Vector3(0, 0.35, 1).normalize(),
           );
         }
-        this.onion.updateCut(this.coverage.bins);
+        this.onion.updateCut(this.coverage.bins, { complete: this.cutOpen });
         this.emit();
         if (i <= 96 && !this.coverage.complete) requestAnimationFrame(next);
         else {
@@ -666,6 +690,15 @@ export class LabController {
       e.group.quaternion.copy(carrier.group.quaternion);
     }
     this.onion.cutLine.visible = !this.sectionMoved;
+    this.seamTime = (this.seamTime ?? 0) + dt;
+    // The outline shows while cutting is relevant and lingers through the final flash.
+    this.seamHot = this.onion.updateSeam(
+      dt,
+      !this.sectionMoved &&
+        (this.tool === "scalpel" || this.cutting || this.seamHot ||
+          (this.hints && !this.cutOpen)),
+      this.seamTime,
+    );
     this.onion.guide.visible =
       !this.cutOpen &&
       (this.hints ||
